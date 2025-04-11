@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>卡牌资源管理游戏</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="game-container">
+        <div class="resource-panel">
+            <div class="resource">
+                <h3>资金</h3>
+                <span id="money">100</span>
+            </div>
+            <div class="resource">
+                <h3>幸福指数</h3>
+                <span id="happiness">0</span>
+            </div>
+            <div class="resource">
+                <h3>回合</h3>
+                <span id="round">1</span>
+            </div>
+        </div>
+
+        <div class="event-area">
+            <div id="event-notification" class="hidden">
+                <h3>金融危机！</h3>
+                <p>黑桃卡收益减半，剩余回合：<span id="event-remaining">0</span></p>
+            </div>
+        </div>
+
+        <div class="hand-area">
+            <h3>手牌</h3>
+            <div id="hand-cards"></div>
+        </div>
+
+        <div class="action-area">
+            <button id="end-turn-btn">结束回合</button>
+            <button id="swap-card-btn">换牌</button>
+        </div>
+
+        <div class="log-area">
+            <h3>操作记录</h3>
+            <div id="log-container"></div>
+        </div>
+    </div>
+
+    <div id="game-over" class="hidden">
+        <div class="game-over-content">
+            <h2 id="game-over-title"></h2>
+            <p id="game-over-message"></p>
+            <div class="game-over-buttons">
+                <button id="restart-btn">重新开始</button>
+                <button id="close-game-over-btn" class="close-btn" onclick="document.getElementById('game-over').classList.add('hidden')">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/card.js"></script>
+    <script src="js/gameState.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html> 
