@@ -3,63 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>卡牌资源管理游戏</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>财富与幸福 - 卡牌游戏</title>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
     <div class="game-container">
-        <div class="resource-panel">
-            <div class="resource">
-                <h3>资金</h3>
-                <span id="money">100</span>
+        <header class="game-header">
+            <h1>财富与幸福</h1>
+            <div class="resource-bar">
+                <div class="resource">
+                    <span class="resource-label">金钱:</span>
+                    <span id="money-value" class="resource-value">1000</span>
+                </div>
+                <div class="resource">
+                    <span class="resource-label">幸福感:</span>
+                    <span id="happiness-value" class="resource-value">50</span>
+                </div>
+                <div class="resource">
+                    <span class="resource-label">回合:</span>
+                    <span id="rounds-value" class="resource-value">1</span>
+                </div>
+                <div class="resource">
+                    <span class="resource-label">贷款:</span>
+                    <span id="loans-value" class="resource-value">0</span>
+                </div>
             </div>
-            <div class="resource">
-                <h3>幸福指数</h3>
-                <span id="happiness">0</span>
+        </header>
+        
+        <main class="game-area">
+            <div class="card-area">
+                <h2>手牌</h2>
+                <div class="hand-cards">
+                    <!-- 卡牌将通过 JavaScript 动态添加 -->
+                </div>
+                <div class="drop-zone">
+                    <span>将卡牌拖放到这里打出</span>
+                </div>
             </div>
-            <div class="resource">
-                <h3>回合</h3>
-                <span id="round">1</span>
+            
+            <div class="game-log">
+                <h2>游戏日志</h2>
+                <div class="log-content">
+                    <!-- 游戏日志将通过 JavaScript 动态添加 -->
+                </div>
             </div>
+        </main>
+        
+        <div class="control-panel">
+            <button id="swap-cards" class="btn btn-secondary">交换手牌 (花费50金钱)</button>
+            <button id="get-loan" class="btn btn-warning">申请贷款 (获得500金钱)</button>
         </div>
-
-        <div class="event-area">
-            <div id="event-notification" class="hidden">
-                <h3>金融危机！</h3>
-                <p>黑桃卡收益减半，剩余回合：<span id="event-remaining">0</span></p>
+        
+        <div class="game-over-overlay hidden">
+            <div class="game-over-modal">
+                <h2>游戏结束</h2>
+                <p>你的游戏结果将显示在这里</p>
+                <div class="game-over-actions">
+                    <button id="restart-game" class="btn btn-primary">重新开始</button>
+                    <button id="close-game" class="btn btn-secondary">关闭游戏</button>
+                </div>
             </div>
-        </div>
-
-        <div class="hand-area">
-            <h3>手牌</h3>
-            <div id="hand-cards"></div>
-        </div>
-
-        <div class="action-area">
-            <button id="end-turn-btn">结束回合</button>
-            <button id="swap-card-btn">换牌</button>
-        </div>
-
-        <div class="log-area">
-            <h3>操作记录</h3>
-            <div id="log-container"></div>
         </div>
     </div>
-
-    <div id="game-over" class="hidden">
-        <div class="game-over-content">
-            <h2 id="game-over-title"></h2>
-            <p id="game-over-message"></p>
-            <div class="game-over-buttons">
-                <button id="restart-btn">重新开始</button>
-                <button id="close-game-over-btn" class="close-btn" onclick="document.getElementById('game-over').classList.add('hidden')">关闭</button>
-            </div>
-        </div>
-    </div>
-
-    <script src="js/card.js"></script>
-    <script src="js/gameState.js"></script>
-    <script src="js/ui.js"></script>
-    <script src="js/main.js"></script>
+    
+    <script src="js/script.js"></script>
 </body>
 </html> 
