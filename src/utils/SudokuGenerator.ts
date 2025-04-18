@@ -13,7 +13,7 @@ export class SudokuGenerator {
 
   /**
    * 生成一个有效的数独谜题
-   * @param difficulty 难度系数(0-1)，值越大，空格越多
+   * @param difficulty 难度系数(0-1)，值越大，空格越多 - 此参数不再使用，保留是为了兼容性
    * @returns 生成的数独谜题
    */
   generate(difficulty: number = 0.5): { puzzle: number[][], solution: number[][] } {
@@ -26,8 +26,8 @@ export class SudokuGenerator {
     // 保存解决方案的副本
     this.solution = this.grid.map(row => [...row]);
     
-    // 根据难度移除一些数字来创建谜题
-    this.removeNumbers(difficulty);
+    // 直接返回完整解答作为谜题，不再移除数字
+    // 原代码：this.removeNumbers(difficulty);
     
     return {
       puzzle: this.grid.map(row => [...row]),
@@ -100,6 +100,7 @@ export class SudokuGenerator {
 
   /**
    * 从谜题中移除数字以创建谜题
+   * 注意：此方法保留但不再使用
    */
   private removeNumbers(difficulty: number): void {
     // 计算要移除的数量 (最多移除约81*0.8个数字)

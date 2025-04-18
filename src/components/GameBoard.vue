@@ -2,6 +2,28 @@
   <div class="game-board-container">
     <!-- 数独棋盘区域 - 始终在中央 -->
     <div class="sudoku-grid">
+      <!-- 游戏状态调试信息 -->
+      <div class="debug-info" v-if="showDebugInfo">
+        <div>当前关卡: {{ gameStore.currentLevel }}</div>
+        <div>敌人数量: {{ gameStore.enemyUnits.length }}</div>
+        <div>格子总数: {{ gameStore.grid.length }}</div>
+        <div>已占用格子: {{ gameStore.grid.filter(c => c.occupied).length }}</div>
+        <div>含单位格子: {{ gameStore.grid.filter(c => c.unit).length }}</div>
+        
+        <!-- 敌人单位列表 -->
+        <div v-if="gameStore.enemyUnits.length > 0">
+          <div class="debug-section-title">敌人列表:</div>
+          <div v-for="(enemy, index) in gameStore.enemyUnits" :key="enemy.id" class="debug-enemy">
+            {{ index+1 }}. {{ enemy.name }} ({{ enemy.atk }}/{{ enemy.hp }}) 
+            位置: {{ enemy.cellIndex }} 
+            数字: {{ enemy.number }}
+          </div>
+        </div>
+        
+        <button @click="forceRefresh">强制刷新</button>
+        <button @click="showDebugInfo = false">关闭调试</button>
+      </div>
+      
       <!-- 9×9数独网格 -->
       <div class="sudoku-board">
         <div 
@@ -26,7 +48,7 @@
             'enemy-unit': isEnemyUnit(cell.unit),
             'neutral-unit': isNeutralUnit(cell.unit)
           }">
-            <div  class="unit-number">{{ cell.value }}</div>
+            <div class="unit-number">{{ cell.unit.number }}</div>
             <div class="unit-stats-wrapper" v-if="!isNeutralUnit(cell.unit)">
               <div class="unit-stats">{{ cell.unit.atk }}/{{ cell.unit.hp }}</div>
             </div>
@@ -34,7 +56,9 @@
           </div>
           
           <!-- 空格子 -->
-          <div v-else class="cell-empty"></div>
+          <div v-else class="cell-empty">
+            <div v-if="cell.value > 0" class="cell-value">{{ cell.value }}</div>
+          </div>
         </div>
       </div>
     </div>
@@ -81,9 +105,11 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useGameStore, Cell, Unit } from '../store/gameStore';
+import type { Card } from '../types/Card';
 
 const gameStore = useGameStore();
 const selectedUnit = ref<Unit | null>(null);
+const showDebugInfo = ref(true); // 显示调试信息
 
 // 单位头像样式
 const unitPortraitStyle = computed(() => {
@@ -159,7 +185,7 @@ function isSelectable(cell: Cell): boolean {
 function handleCellClick(cell: Cell) {
   // 如果有选中的卡牌且格子可选，则打出卡牌
   if (gameStore.selectedCard && isSelectable(cell)) {
-    const cardIndex = gameStore.hand.findIndex(c => c.id === gameStore.selectedCard?.id);
+    const cardIndex = gameStore.hand.findIndex((c: Card) => c.id === gameStore.selectedCard?.id);
     if (cardIndex !== -1) {
       gameStore.playCard(cardIndex, cell.index);
       gameStore.selectCard(null);
@@ -178,7 +204,7 @@ function handleCellClick(cell: Cell) {
 function getUnitCellValue(unit: Unit): number | null {
   if (!unit || unit.cellIndex === undefined || unit.cellIndex < 0) return null;
   
-  const cell = gameStore.grid.find(c => c.index === unit.cellIndex);
+  const cell = gameStore.grid.find((c: Cell) => c.index === unit.cellIndex);
   return cell ? cell.value : null;
 }
 
@@ -195,6 +221,15 @@ function isSpellTargeting(cell: Cell, targetType: 'enemy' | 'friendly'): boolean
            gameStore.selectedCard.description.includes('友方');
   }
 }
+
+// 强制刷新游戏
+function forceRefresh() {
+  const currentLevel = gameStore.currentLevel;
+  console.log("强制刷新游戏，当前关卡:", currentLevel);
+  
+  // 重新初始化游戏
+  gameStore.startNewGame();
+}
 </script>
 
 <style scoped>
@@ -209,6 +244,46 @@ function isSpellTargeting(cell: Cell, targetType: 'enemy' | 'friendly'): boolean
   position: relative;
   height: 100%;
   overflow: hidden;
+}
+
+/* 调试信息 */
+.debug-info {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background-color: rgba(0, 0, 0, 0.7);
+  padding: 10px;
+  border-radius: 5px;
+  color: white;
+  font-size: 12px;
+  z-index: 100;
+  max-height: 80vh;
+  overflow-y: auto;
+  max-width: 300px;
+}
+
+.debug-section-title {
+  font-weight: bold;
+  margin-top: 8px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.3);
+}
+
+.debug-enemy {
+  font-size: 11px;
+  padding: 2px 0;
+  border-bottom: 1px dashed rgba(255,255,255,0.1);
+}
+
+.debug-info button {
+  margin-top: 10px;
+  margin-right: 5px;
+  padding: 5px 10px;
+  background-color: #ff5555;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
 }
 
 /* 数独棋盘样式 */

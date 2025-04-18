@@ -5,10 +5,12 @@
       <div class="turn-info">回合: {{ gameStore.turn }}</div>
       <div class="phase-info">阶段: {{ phaseText }}</div>
       <div class="battle-info">战斗: {{ gameStore.currentBattle }}</div>
+      
     </div>
     
     <!-- 中间玩家信息 -->
     <div class="player-stats">
+      <div class="level-info">关卡 {{ gameStore.currentLevel }}</div>
       <div class="stat-label">
         HP: {{ gameStore.player.hp }}/{{ gameStore.player.maxHp }} | 
         ATK: {{ gameStore.player.atk }} | 
@@ -65,7 +67,7 @@ const phaseText = computed(() => {
   padding: 10px 20px;
   border-bottom: 2px solid #333;
   color: #fff;
-  height: 70px;
+  height: 100px;
 }
 
 .game-info, .resources {
@@ -141,5 +143,13 @@ const phaseText = computed(() => {
 
 .gold-value {
   color: #ffcc33;
+}
+
+.level-info {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 5px;
+  color: white;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
 }
 </style> 

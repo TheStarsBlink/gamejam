@@ -1,5 +1,8 @@
 <template>
   <div id="game-board">
+    <!-- 游戏开始界面 -->
+    <GameStart />
+    
     <!-- 游戏顶部信息栏 -->
     <GameHeader />
 
@@ -25,13 +28,15 @@ import GameBoard from './components/GameBoard.vue';
 import CardHand from './components/CardHand.vue';
 import GameControls from './components/GameControls.vue';
 import GameMessage from './components/GameMessage.vue';
+import GameStart from './components/GameStart.vue';
 
 const gameStore = useGameStore();
 
-onMounted(() => {
-  // 初始化游戏
-  gameStore.startNewGame();
-});
+// 不再自动初始化游戏，而是通过GameStart组件的按钮触发
+// onMounted(() => {
+//   // 初始化游戏
+//   gameStore.startNewGame();
+// });
 </script>
 
 <style>

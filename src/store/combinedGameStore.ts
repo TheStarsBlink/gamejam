@@ -22,6 +22,7 @@ export interface Unit {
     traits: string[];
     cellIndex: number;
     image?: string;
+    number?: number; // 数独格子的数字值
 }
 
 // 棋盘格子类型
@@ -107,25 +108,8 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
             console.warn(`未找到关卡${currentLevel.value}的配置，使用默认难度`);
         }
         
-        // 清空棋盘和单位，并设置数独数字
-        for (let i = 0; i < 81; i++) {
-            const row = Math.floor(i / 9)
-            const col = i % 9
-            
-            // 确保值为0的格子（空地）被正确标记
-            const puzzleValue = sudokuPuzzle.value[row][col]
-            
-            grid.value[i] = { 
-                index: i, 
-                occupied: false,
-                value: puzzleValue // 确保空地值为0
-            }
-            
-            // 用于调试: 记录空地
-            if (puzzleValue <= 0) {
-                console.log(`格子 ${i} 是空地 (value = ${puzzleValue})`)
-            }
-        }
+        // 清空棋盘和单位，使用resetGrid函数
+        resetGrid();
         
         playerUnits.value = []
         enemyUnits.value = []
@@ -134,7 +118,7 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
         initializeDeck()
         drawCards(3)
         
-        // 初始化敌人
+        // 初始化敌人，使用新的敌人生成机制
         spawnEnemies()
         
         showMessage('游戏开始！')
@@ -277,6 +261,13 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
             return
         }
         
+        // 找到格子在数独中的行列位置
+        const row = Math.floor(cellIndex / 9);
+        const col = cellIndex % 9;
+        
+        // 获取该位置的数独数字
+        const cellValue = sudokuPuzzle.value[row][col];
+        
         const unit: Unit = {
             id: card.id + Date.now(),
             name: card.name,
@@ -285,7 +276,8 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
             atk: card.atk ?? 1, // 修复类型错误
             traits: [],
             cellIndex: cellIndex,
-            image: card.image
+            image: card.image,
+            number: cellValue || card.value || 0 // 优先使用格子的数独数字，其次使用卡牌的值
         }
         
         // 添加到玩家单位
@@ -294,6 +286,8 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
         // 更新格子状态
         grid.value[cellIndex].occupied = true
         grid.value[cellIndex].unit = unit
+        
+        console.log(`玩家在格子 ${cellIndex} (行${row}列${col}) 部署单位 ${unit.name}，格子数值: ${cellValue}`);
     }
     
     // 使用法术
@@ -381,9 +375,9 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
     // 创建中立单位替代死亡单位
     function createNeutralUnit(cellIndex: number, cellValue: number) {
         // 清空对应格子原有单位
-        const cell = grid.value[cellIndex]
+        const cell = grid.value[cellIndex];
         
-        // 创建一个中立单位，只保留数字
+        // 创建一个中立单位，保留数字
         const neutralUnit: Unit = {
             id: `neutral_${Date.now()}_${cellIndex}`,
             name: "残骸",
@@ -392,12 +386,15 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
             atk: 0,
             traits: [],
             cellIndex: cellIndex,
-            image: 'assets/neutral.svg' // 可以添加一个中立单位的图片
-        }
+            image: 'assets/neutral.svg', // 可以添加一个中立单位的图片
+            number: cellValue || 0 // 将格子的数独数字赋给中立单位
+        };
         
         // 更新格子状态
-        cell.unit = neutralUnit
-        cell.occupied = true
+        cell.unit = neutralUnit;
+        cell.occupied = true;
+        
+        console.log(`在格子 ${cellIndex} 创建中立单位，格子数值: ${cellValue}`);
     }
     
     // 生成敌人
@@ -409,8 +406,141 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
             return;
         }
         
-        enemyUnits.value = generateEnemiesForLevel(currentLevel.value, grid.value);
-        showMessage(`第${currentLevel.value}关: ${levelConfig.name}`);
+        // 先清空现有敌人
+        enemyUnits.value = [];
+        
+        // 获取空格子（更改为选择有数字的格子，数独值大于0的格子）
+        const availableCells = grid.value.filter(cell => !cell.occupied && cell.value > 0);
+        
+        if (availableCells.length === 0) {
+            console.warn('没有可用的格子来放置敌人，尝试使用所有空格子');
+            // 退化方案：使用所有未占用格子
+            const allEmptyCells = grid.value.filter(cell => !cell.occupied);
+            if (allEmptyCells.length === 0) {
+                console.error('棋盘上没有可用格子！');
+                return;
+            }
+            // 使用所有空格子
+            generateEnemiesOnCells(levelConfig, allEmptyCells);
+            return;
+        }
+        
+        // 使用带数字的格子来生成敌人
+        generateEnemiesOnCells(levelConfig, availableCells);
+    }
+    
+    // 重置棋盘
+    function resetGrid() {
+        // 确保数独谜题已经生成
+        if (!sudokuPuzzle.value || !sudokuPuzzle.value.length) {
+            console.error('数独谜题未生成，无法重置棋盘');
+            return;
+        }
+        
+        // 创建新的网格数组
+        grid.value = [];
+        
+        // 填充网格
+        for (let i = 0; i < 81; i++) {
+            const row = Math.floor(i / 9);
+            const col = i % 9;
+            
+            // 从数独谜题中获取对应位置的值
+            const puzzleValue = sudokuPuzzle.value[row][col];
+            
+            // 添加到网格
+            grid.value.push({ 
+                index: i, 
+                occupied: false,
+                value: puzzleValue // 数独值
+            });
+        }
+        
+        // 调试输出网格信息
+        const nonZeroCount = grid.value.filter(cell => cell.value > 0).length;
+        const zeroCount = grid.value.filter(cell => cell.value === 0).length;
+        console.log(`网格初始化完成：共${grid.value.length}格，${nonZeroCount}个数字格，${zeroCount}个空格`);
+    }
+    
+    // 辅助函数：在指定格子上生成敌人
+    function generateEnemiesOnCells(levelConfig: LevelConfig, availableCells: Cell[]) {
+        if (!levelConfig || !levelConfig.enemies || levelConfig.enemies.length === 0) {
+            console.error('关卡配置错误或没有敌人配置');
+            return;
+        }
+        
+        if (!availableCells || availableCells.length === 0) {
+            console.error('没有可用格子来放置敌人');
+            return;
+        }
+        
+        // 随机洗牌可用格子，确保敌人位置随机
+        const shuffledCells = [...availableCells].sort(() => Math.random() - 0.5);
+        
+        // 计算要生成的敌人数量，不能超过可用格子数
+        const enemiesToGenerate = Math.min(levelConfig.enemies.length, shuffledCells.length);
+        
+        // 确认生成数量
+        console.log(`关卡 ${currentLevel.value} 配置的敌人总数: ${levelConfig.enemies.length}`);
+        console.log(`可用格子数量: ${shuffledCells.length}`);
+        console.log(`将生成 ${enemiesToGenerate} 个敌人`);
+        
+        // 创建敌人单位
+        let enemyCount = 0;
+        
+        for (let i = 0; i < enemiesToGenerate; i++) {
+            try {
+                const enemyConfig = levelConfig.enemies[i];
+                const cellToUse = shuffledCells[i];
+                
+                if (!cellToUse) {
+                    console.warn(`没有足够的格子放置第${i+1}个敌人`);
+                    continue;
+                }
+                
+                // 创建唯一ID
+                const enemyId = `enemy_${currentLevel.value}_${i}_${Date.now()}`;
+                
+                // 找到格子在数独中的行列位置
+                const row = Math.floor(cellToUse.index / 9);
+                const col = cellToUse.index % 9;
+                
+                // 获取该位置的数独数字
+                const cellValue = sudokuPuzzle.value[row][col];
+                
+                // 创建敌人单位，并将数独数字赋给敌人
+                const enemyUnit: Unit = {
+                    id: enemyId,
+                    name: enemyConfig.name,
+                    hp: enemyConfig.hp,
+                    maxHp: enemyConfig.hp,
+                    atk: enemyConfig.atk,
+                    traits: [],
+                    cellIndex: cellToUse.index,
+                    image: enemyConfig.image || 'assets/enemy_default.svg',
+                    number: cellValue || 0
+                };
+                
+                // 将敌人添加到敌人数组
+                enemyUnits.value.push(enemyUnit);
+                
+                // 标记格子为已占用，并设置单位
+                grid.value[cellToUse.index].occupied = true;
+                grid.value[cellToUse.index].unit = enemyUnit;
+                
+                enemyCount++;
+                
+                console.log(`在格子 ${cellToUse.index} (行${row}列${col}) 放置敌人 ${enemyUnit.name}，格子数值: ${cellValue}`);
+            } catch (error) {
+                console.error(`生成第${i+1}个敌人时出错:`, error);
+            }
+        }
+        
+        // 打印敌人数量信息
+        console.log(`为关卡 ${currentLevel.value} (${levelConfig.name}) 实际生成了 ${enemyCount} 个敌人`);
+        
+        // 显示关卡名称
+        showMessage(`第${currentLevel.value}关: ${levelConfig.name} - 敌人数量: ${enemyCount}`);
     }
     
     // 结束回合
@@ -490,7 +620,43 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
     // 准备下一关战斗
     function prepareNextBattle() {
         // 重置游戏状态准备下一关
-        // ...
+        phase.value = 'deployment';
+        turn.value = 1;
+        currentBattle.value++;
+        
+        // 回复玩家能量
+        player.value.energy = player.value.maxEnergy;
+        
+        // 生成新的数独谜题，使用当前关卡的难度设置
+        const levelConfig = getLevel(currentLevel.value);
+        if (levelConfig) {
+            generateSudokuPuzzle(levelConfig.sudokuDifficulty);
+        } else {
+            // 使用默认难度
+            generateSudokuPuzzle(0.3 + currentLevel.value * 0.05); // 随关卡增加难度
+            console.warn(`未找到关卡${currentLevel.value}的配置，使用默认难度`);
+        }
+        
+        // 清空棋盘和单位，并设置数独数字
+        resetGrid();
+        
+        playerUnits.value = [];
+        enemyUnits.value = [];
+        
+        // 清空手牌和弃牌堆，重新抽初始手牌
+        hand.value = [];
+        discard.value = [];
+        drawCards(3);
+        
+        // 初始化敌人
+        spawnEnemies();
+        
+        // 显示关卡信息
+        if (levelConfig) {
+            showMessage(`第${currentLevel.value}关: ${levelConfig.name}`);
+        } else {
+            showMessage(`第${currentLevel.value}关开始！`);
+        }
     }
     
     // 将弃牌堆洗入牌库
