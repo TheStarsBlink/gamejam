@@ -1,5 +1,79 @@
 <template>
   <div class="game-board-container">
+    <!-- 数独区域指示器 - 固定显示在右侧 -->
+    <div class="region-indicator" v-if="showRegionInfo">
+      <div class="region-title">
+        区域信息
+        <button class="close-region-btn" @click="showRegionInfo = false">×</button>
+      </div>
+      <div class="region-content">
+        <div v-if="selectedRegion !== null" class="region-info">
+          当前选中: 第 {{ selectedRegion + 1 }} 区域
+        </div>
+        <div class="region-grid">
+          <div 
+            v-for="i in 9" 
+            :key="i-1"
+            class="region-cell" 
+            :class="{ 'active': selectedRegion === i-1 }"
+            @click="handleRegionSelect(i-1)"
+          >
+            {{ i }}
+          </div>
+        </div>
+        
+        <!-- 区域统计信息 -->
+        <div v-if="selectedRegion !== null" class="region-stats">
+          <div class="region-data">
+            <span class="label">格子数量:</span>
+            <span class="value">9</span>
+          </div>
+          <div class="region-data">
+            <span class="label">敌人数量:</span>
+            <span class="value">{{ countEnemiesInRegion(selectedRegion) }}</span>
+          </div>
+          <div class="region-data">
+            <span class="label">我方单位:</span>
+            <span class="value">{{ countPlayerUnitsInRegion(selectedRegion) }}</span>
+          </div>
+          <div class="region-data">
+            <span class="label">数字和:</span>
+            <span class="value">{{ calculateRegionSum(selectedRegion) }}</span>
+          </div>
+          <div class="region-data">
+            <span class="label">区域位置:</span>
+            <span class="value">{{ getRegionPosition(selectedRegion) }}</span>
+          </div>
+          
+          <!-- 战斗结果提示 -->
+          <div v-if="battleResult" class="battle-result" :class="{'battle-success': battleResult.includes('胜利')}">
+            {{ battleResult }}
+          </div>
+          
+          <!-- 区域战斗按钮 -->
+          <button 
+            v-if="countEnemiesInRegion(selectedRegion) > 0 && countPlayerUnitsInRegion(selectedRegion) > 0" 
+            class="battle-btn"
+            @click="startRegionBattle(selectedRegion)"
+            :disabled="isBattling"
+          >
+            {{ isBattling ? '战斗中...' : '开始战斗' }} ({{ countEnemiesInRegion(selectedRegion) }}个敌人)
+          </button>
+          <div v-else-if="countEnemiesInRegion(selectedRegion) === 0" class="empty-region-msg">
+            此区域没有敌人
+          </div>
+          <div v-else class="empty-region-msg">
+            此区域没有我方单位，无法战斗
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 显示区域信息的按钮 - 当区域信息被隐藏时显示 -->
+    <button v-if="!showRegionInfo" class="show-region-btn" @click="showRegionInfo = true">
+      显示区域信息
+    </button>
+    
     <!-- 数独棋盘区域 - 始终在中央 -->
     <div class="sudoku-grid">
       <!-- 游戏状态调试信息 -->
@@ -110,6 +184,10 @@ import type { Card } from '../types/Card';
 const gameStore = useGameStore();
 const selectedUnit = ref<Unit | null>(null);
 const showDebugInfo = ref(true); // 显示调试信息
+const showRegionInfo = ref(true); // 显示区域信息
+const selectedRegion = ref<number | null>(null); // 选中的3x3区域索引（0-8）
+const battleResult = ref<string | null>(null); // 战斗结果提示
+const isBattling = ref(false); // 战斗状态
 
 // 单位头像样式
 const unitPortraitStyle = computed(() => {
@@ -181,8 +259,37 @@ function isSelectable(cell: Cell): boolean {
   return isHighlighted(cell);
 }
 
+// 处理区域选择
+function handleRegionSelect(regionIndex: number) {
+  if (regionIndex >= 0 && regionIndex <= 8) {
+    selectedRegion.value = regionIndex;
+    console.log("选择了区域:", regionIndex + 1);
+    
+    // 检查并输出该区域的敌人和我方单位数量
+    const enemyCount = countEnemiesInRegion(regionIndex);
+    const playerCount = countPlayerUnitsInRegion(regionIndex);
+    console.log(`区域${regionIndex + 1}中敌人数量: ${enemyCount}, 我方单位数量: ${playerCount}`);
+    
+    // 清除上一次的战斗结果
+    battleResult.value = null;
+  }
+}
+
 // 处理格子点击
 function handleCellClick(cell: Cell) {
+  // 更新选中的区域
+  const region = calculateRegion(cell.index);
+  console.log("点击格子:", cell.index, "所在区域:", region + 1);
+  selectedRegion.value = region;
+  
+  // 检查并输出该区域的敌人和我方单位数量
+  const enemyCount = countEnemiesInRegion(region);
+  const playerCount = countPlayerUnitsInRegion(region);
+  console.log(`区域${region + 1}中敌人数量: ${enemyCount}, 我方单位数量: ${playerCount}`);
+  
+  // 清除上一次的战斗结果
+  battleResult.value = null;
+  
   // 如果有选中的卡牌且格子可选，则打出卡牌
   if (gameStore.selectedCard && isSelectable(cell)) {
     const cardIndex = gameStore.hand.findIndex((c: Card) => c.id === gameStore.selectedCard?.id);
@@ -230,6 +337,199 @@ function forceRefresh() {
   // 重新初始化游戏
   gameStore.startNewGame();
 }
+
+// 根据格子索引计算所在的3x3区域
+function calculateRegion(cellIndex: number): number {
+  // 格子行列
+  const row = Math.floor(cellIndex / 9);
+  const col = cellIndex % 9;
+  
+  // 计算所在区域
+  // 区域索引从0开始：0,1,2在第一行，3,4,5在第二行，6,7,8在第三行
+  const regionRow = Math.floor(row / 3); // 0-2
+  const regionCol = Math.floor(col / 3); // 0-2
+  
+  // 计算区域索引
+  const regionIndex = regionRow * 3 + regionCol; // 0-8
+  
+  // 确保区域索引在有效范围内 (0-8)
+  if (regionIndex < 0 || regionIndex > 8) {
+    console.error("计算出的区域索引无效:", regionIndex, "原始格子索引:", cellIndex);
+    return 0; // 返回一个默认值
+  }
+  
+  return regionIndex;
+}
+
+// 计算区域统计信息
+function countEnemiesInRegion(regionIndex: number): number {
+  if (regionIndex === null) return 0;
+  
+  // 获取区域内的所有格子索引
+  const cellIndices: number[] = [];
+  const startRow = Math.floor(regionIndex / 3) * 3;
+  const startCol = (regionIndex % 3) * 3;
+  
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 3; c++) {
+      const cellIndex = (startRow + r) * 9 + (startCol + c);
+      cellIndices.push(cellIndex);
+    }
+  }
+  
+  // 使用格子索引直接检查敌方单位
+  const enemyUnitsCount = gameStore.grid
+    .filter((c: Cell) => cellIndices.includes(c.index) && c.unit && isEnemyUnit(c.unit))
+    .length;
+  
+  return enemyUnitsCount;
+}
+
+// 计算区域内的我方单位数量
+function countPlayerUnitsInRegion(regionIndex: number): number {
+  if (regionIndex === null) return 0;
+  
+  console.log("检查区域" + (regionIndex + 1) + "内的我方单位");
+  
+  // 获取区域内的所有格子索引
+  const cellIndices: number[] = [];
+  const startRow = Math.floor(regionIndex / 3) * 3;
+  const startCol = (regionIndex % 3) * 3;
+  
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 3; c++) {
+      const cellIndex = (startRow + r) * 9 + (startCol + c);
+      cellIndices.push(cellIndex);
+    }
+  }
+  
+  // 使用格子索引直接检查我方单位
+  const playerUnitsCount = gameStore.grid
+    .filter((c: Cell) => cellIndices.includes(c.index) && c.unit && isPlayerUnit(c.unit))
+    .length;
+  
+  console.log("区域" + (regionIndex + 1) + "内我方单位数量:", playerUnitsCount);
+  console.log("区域" + (regionIndex + 1) + "包含格子:", cellIndices.join(", "));
+  
+  return playerUnitsCount;
+}
+
+function getRegionPosition(regionIndex: number): string {
+  if (regionIndex === null) return '';
+  
+  // 计算区域的行列位置
+  const regionRow = Math.floor(regionIndex / 3) + 1; // 1-3行
+  const regionCol = (regionIndex % 3) + 1; // 1-3列
+  
+  return `${regionRow}行${regionCol}列`;
+}
+
+function calculateRegionSum(regionIndex: number): number {
+  if (regionIndex === null) return 0;
+  const regionCells = gameStore.grid.filter((c: Cell) => calculateRegion(c.index) === regionIndex);
+  return regionCells.reduce((sum: number, cell: Cell) => sum + (cell.value || 0), 0);
+}
+
+// 开始区域战斗
+function startRegionBattle(regionIndex: number) {
+  if (isBattling.value) return;
+  
+  console.log("尝试开始区域战斗:", regionIndex + 1);
+  
+  // 验证区域索引是否有效
+  if (regionIndex < 0 || regionIndex > 8) {
+    console.error("无效的区域索引:", regionIndex);
+    battleResult.value = "无效的区域";
+    return;
+  }
+  
+  isBattling.value = true;
+  battleResult.value = null;
+  
+  // 获取区域内的所有格子索引
+  const cellIndices: number[] = [];
+  const startRow = Math.floor(regionIndex / 3) * 3;
+  const startCol = (regionIndex % 3) * 3;
+  
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 3; c++) {
+      const cellIndex = (startRow + r) * 9 + (startCol + c);
+      cellIndices.push(cellIndex);
+    }
+  }
+  
+  console.log("区域" + (regionIndex + 1) + "包含格子:", cellIndices.join(", "));
+  
+  // 获取区域内的所有单位
+  const regionCells = gameStore.grid.filter((c: Cell) => cellIndices.includes(c.index));
+  
+  console.log("区域内格子数量:", regionCells.length);
+  
+  const enemyUnits = regionCells
+    .filter((c: Cell) => c.unit && isEnemyUnit(c.unit))
+    .map((c: Cell) => c.unit!);
+  
+  // 获取区域内的玩家单位
+  const playerUnitsInRegion = regionCells
+    .filter((c: Cell) => c.unit && isPlayerUnit(c.unit))
+    .map((c: Cell) => c.unit!);
+  
+  console.log("区域内敌人数量:", enemyUnits.length);
+  console.log("区域内玩家单位数量:", playerUnitsInRegion.length);
+  
+  if (enemyUnits.length === 0) {
+    battleResult.value = "没有敌人可以战斗";
+    isBattling.value = false;
+    return;
+  }
+  
+  if (playerUnitsInRegion.length === 0) {
+    battleResult.value = "此区域没有我方单位，无法战斗";
+    isBattling.value = false;
+    return;
+  }
+  
+  // 计算战斗力
+  const enemyPower = enemyUnits.reduce((total: number, unit: Unit) => total + unit.atk + unit.hp, 0);
+  const playerPower = playerUnitsInRegion.reduce((total: number, unit: Unit) => total + unit.atk + unit.hp, 0);
+  
+  console.log("战斗开始:", regionIndex + 1);
+  console.log("敌人战斗力:", enemyPower, "玩家战斗力:", playerPower);
+  
+  // 模拟战斗过程
+  setTimeout(() => {
+    // 简化版战斗逻辑
+    if (playerPower >= enemyPower) {
+      // 玩家胜利，移除所有敌人
+      for (const enemy of enemyUnits) {
+        if (enemy.cellIndex !== undefined) {
+          // 找到敌人所在的格子
+          const cell = gameStore.grid.find((c: Cell) => c.index === enemy.cellIndex);
+          if (cell) {
+            cell.unit = undefined;
+            cell.occupied = false;
+          }
+        }
+      }
+      
+      // 从敌人列表中移除已击败的敌人
+      gameStore.enemyUnits = gameStore.enemyUnits.filter(
+        (enemy: Unit) => !enemyUnits.some((u: Unit) => u.id === enemy.id)
+      );
+      
+      // 设置战斗结果
+      battleResult.value = `胜利！击败了${enemyUnits.length}个敌人`;
+    } else {
+      // 玩家失败，区域内的玩家单位损失一定生命值
+      for (const unit of playerUnitsInRegion) {
+        unit.hp = Math.max(1, unit.hp - 1); // 确保不会死亡，最低为1
+      }
+      battleResult.value = "失败！您的单位受到了伤害";
+    }
+    
+    isBattling.value = false;
+  }, 1000); // 1秒后显示结果
+}
 </script>
 
 <style scoped>
@@ -249,17 +549,17 @@ function forceRefresh() {
 /* 调试信息 */
 .debug-info {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  bottom: 10px; /* 改为底部显示 */
+  left: 10px;
   background-color: rgba(0, 0, 0, 0.7);
   padding: 10px;
   border-radius: 5px;
   color: white;
   font-size: 12px;
   z-index: 100;
-  max-height: 80vh;
+  max-height: 250px; /* 减小最大高度 */
   overflow-y: auto;
-  max-width: 300px;
+  max-width: 280px;
 }
 
 .debug-section-title {
@@ -617,5 +917,198 @@ function forceRefresh() {
 .neutral-unit .unit-name {
   font-style: italic;
   opacity: 0.7;
+}
+
+/* 区域指示器 */
+.region-indicator {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  width: 170px;
+  background-color: rgba(30, 30, 50, 0.95);
+  border: 1px solid #555;
+  border-radius: 8px;
+  padding: 12px;
+  color: white;
+  z-index: 10;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.6);
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.region-title {
+  font-size: 16px;
+  font-weight: bold;
+  margin-bottom: 12px;
+  text-align: center;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #555;
+  color: #55aaff; /* 添加颜色 */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.close-region-btn {
+  width: 20px;
+  height: 20px;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+}
+
+.close-region-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+/* 显示区域信息按钮 */
+.show-region-btn {
+  position: fixed;
+  top: 100px;
+  right: 20px;
+  padding: 8px 12px;
+  background-color: rgba(30, 30, 50, 0.8);
+  color: white;
+  border: 1px solid #555;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  z-index: 10;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s ease;
+}
+
+.show-region-btn:hover {
+  background-color: rgba(85, 170, 255, 0.6);
+  border-color: #55aaff;
+}
+
+.region-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.region-info {
+  margin-bottom: 10px;
+  text-align: center;
+  font-size: 15px;
+  padding: 5px;
+  background-color: rgba(85, 170, 255, 0.2);
+  border-radius: 5px;
+  border: 1px solid rgba(85, 170, 255, 0.3);
+}
+
+.region-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 3px;
+  width: 130px;
+  height: 130px;
+  margin: 5px auto 12px;
+  border: 1px solid #444;
+  padding: 3px;
+  background-color: rgba(0, 0, 0, 0.3);
+  border-radius: 5px;
+}
+
+.region-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(60, 60, 100, 0.3);
+  border: 1px solid #555;
+  font-size: 18px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.region-cell:hover {
+  background-color: rgba(85, 170, 255, 0.3);
+}
+
+.region-cell.active {
+  background-color: rgba(85, 170, 255, 0.7);
+  border-color: #55aaff;
+  box-shadow: 0 0 8px rgba(85, 170, 255, 0.8);
+  color: white;
+  font-weight: bold;
+}
+
+/* 区域统计信息 */
+.region-stats {
+  margin-top: 10px;
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 5px;
+  padding: 8px;
+  border: 1px solid #444;
+}
+
+.region-data {
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.region-data .label {
+  font-weight: normal;
+  color: #aaa;
+}
+
+.region-data .value {
+  font-weight: bold;
+  color: #fff;
+}
+
+/* 区域战斗按钮 */
+.battle-btn {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background-color: rgba(30, 30, 50, 0.8);
+  color: white;
+  border: 1px solid #555;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  z-index: 10;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s ease;
+}
+
+.battle-btn:hover {
+  background-color: rgba(85, 170, 255, 0.6);
+  border-color: #55aaff;
+}
+
+.empty-region-msg {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 14px;
+  color: #aaa;
+}
+
+.battle-result {
+  margin-top: 10px;
+  text-align: center;
+  font-size: 14px;
+  color: #fff;
+  padding: 5px;
+  border-radius: 5px;
+  background-color: rgba(255, 0, 0, 0.8);
+}
+
+.battle-result.battle-success {
+  background-color: rgba(0, 255, 0, 0.8);
 }
 </style>
