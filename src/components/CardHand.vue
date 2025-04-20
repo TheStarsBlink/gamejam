@@ -31,6 +31,21 @@
         <div class="card-description">{{ card.description }}</div>
         <div class="card-type">{{ getCardTypeText(card.type) }}</div>
         
+        <!-- 卡牌数字显示 (右上角) -->
+        <div v-if="card.type === 'unit' && card.value" class="card-number-display">
+          {{ card.value }}
+        </div>
+        
+        <!-- 单位卡牌攻击力显示 (左下角) -->
+        <div v-if="card.type === 'unit' && card.atk !== undefined" class="card-attack">
+          {{ card.atk }}
+        </div>
+        
+        <!-- 单位卡牌生命值显示 (右下角) -->
+        <div v-if="card.type === 'unit' && card.hp !== undefined" class="card-health">
+          {{ card.hp }}
+        </div>
+        
         <!-- 法术牌提示图标 -->
         <div class="spell-indicator" v-if="card.type === 'spell'">
           <div class="spell-target-icon enemy" v-if="isEnemyTargetSpell(card)" title="对敌方释放">⚔️</div>
@@ -169,7 +184,7 @@ function handleCardMouseMove(card: Card, event: MouseEvent) {
   // 如果拖动距离超过阈值并且是直接释放类型的法术
   if (dragDistance > dragThreshold && isDirectCastSpell(card)) {
     // 找到卡牌索引
-    const cardIndex = gameStore.hand.findIndex(c => c.id === card.id);
+    const cardIndex = gameStore.hand.findIndex((c: Card) => c.id === card.id);
     if (cardIndex !== -1) {
       // 直接释放法术
       gameStore.playCard(cardIndex, -1);
@@ -620,14 +635,36 @@ function getCardTypeText(type: string): string {
   overflow: hidden;
 }
 
-.card-stats {
-  font-size: 9px;
-  color: #aaa;
-  text-align: center;
+.card-attack, .card-health {
   position: absolute;
-  bottom: 15px;
-  width: 100%;
-  left: 0;
+  bottom: 5px; /* 距离底部距离 */
+  background-color: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  font-weight: bold;
+  font-size: 14px; /* 调整字体大小 */
+  border-radius: 4px; /* 轻微圆角 */
+  padding: 2px 5px; /* 内边距 */
+  line-height: 1;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.4);
+  z-index: 2; /* 确保在其他内容之上 */
+}
+
+.card-attack {
+  left: 5px; /* 距离左侧距离 */
+  background: linear-gradient(to bottom, #f77, #c44); /* 攻击力用红色系 */
+  border-color: rgba(255, 150, 150, 0.5);
+}
+
+.card-health {
+  right: 5px; /* 距离右侧距离 */
+  background: linear-gradient(to bottom, #7f7, #4c4); /* 生命值用绿色系 */
+  border-color: rgba(150, 255, 150, 0.5);
+}
+
+.card-stats {
+  /* 移除旧的 card-stats 样式或注释掉 */
+  /* display: none; */ 
 }
 
 .mana-display {
@@ -673,5 +710,25 @@ function getCardTypeText(type: string): string {
   font-size: 0.9rem;
   margin-left: 0.5rem;
   text-shadow: 0 0 4px rgba(0, 195, 255, 0.8);
+}
+
+.card-number-display {
+  position: absolute;
+  top: 5px; /* 距离顶部距离 */
+  right: 5px; /* 距离右侧距离 */
+  background-color: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  font-weight: bold;
+  font-size: 16px; /* 数字字体大小 */
+  border-radius: 50%; /* 圆形背景 */
+  width: 24px; /* 圆形宽度 */
+  height: 24px; /* 圆形高度 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+  z-index: 2; /* 确保在其他内容之上 */
 }
 </style> 

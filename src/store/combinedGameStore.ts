@@ -276,19 +276,16 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
         const row = Math.floor(cellIndex / 9);
         const col = cellIndex % 9;
         
-        // 获取该位置的数独数字
-        const cellValue = sudokuPuzzle.value[row][col];
-        
         const unit: Unit = {
             id: card.id + Date.now(),
             name: card.name,
-            hp: card.hp ?? 1, // 修复类型错误
-            maxHp: card.hp ?? 1, // 修复类型错误
-            atk: card.atk ?? 1, // 修复类型错误
+            hp: card.hp ?? 1,
+            maxHp: card.hp ?? 1,
+            atk: card.atk ?? 1,
             traits: [],
             cellIndex: cellIndex,
             image: card.image,
-            number: cellValue || card.value || 0 // 优先使用格子的数独数字，其次使用卡牌的值
+            number: card.value || 0 
         }
         
         // 添加到玩家单位
@@ -298,7 +295,7 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
         grid.value[cellIndex].occupied = true
         grid.value[cellIndex].unit = unit
         
-        console.log(`玩家在格子 ${cellIndex} (行${row}列${col}) 部署单位 ${unit.name}，格子数值: ${cellValue}`);
+        console.log(`玩家在格子 ${cellIndex} (行${row}列${col}) 部署单位 ${unit.name}，单位自带数字: ${unit.number}`);
         
         if (grid.value[cellIndex].unit) {
           saveGameState(); // 部署单位后保存状态
