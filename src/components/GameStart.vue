@@ -2,7 +2,8 @@
   <div class="game-start-overlay" v-if="!gameStarted">
     <div class="game-start-container">
       <h1>数独卡牌游戏</h1>
-      <button class="start-button" @click="startGame">游戏开始!</button>
+      <button v-if="hasSavedGame" class="continue-button" @click="continueGame">继续游戏</button>
+      <button class="start-button" @click="startGame">新游戏</button>
     </div>
   </div>
 </template>
@@ -13,11 +14,12 @@ import { useGameStore } from '../store/gameStore';
 
 const gameStore = useGameStore();
 const gameStarted = ref(false);
+const hasSavedGame = ref(false);
 
 function validateEnemyUnits() {
   if (gameStore.enemyUnits.length === 0) {
     console.warn('没有生成敌人，尝试再次初始化');
-    gameStore.startNewGame();
+    gameStore.startNewGame(true);
     
     // 再次检查
     setTimeout(() => {
@@ -34,21 +36,54 @@ function validateEnemyUnits() {
   }
 }
 
+// 开始新游戏
 function startGame() {
   gameStarted.value = true;
   
-  // 初始化游戏
-  gameStore.startNewGame();
+  // 初始化游戏，传递true表示强制重置游戏状态
+  gameStore.startNewGame(true);
   
   // 检查敌人是否生成
   setTimeout(validateEnemyUnits, 100);
   
-  console.log("游戏已初始化，开始关卡:", gameStore.currentLevel);
+  console.log("新游戏已初始化，开始关卡:", gameStore.currentLevel);
+}
+
+// 继续游戏
+function continueGame() {
+  gameStarted.value = true;
+  
+  // 加载保存的游戏状态
+  const success = gameStore.startNewGame(false);
+  
+  if (!success) {
+    console.error("加载存档失败，开始新游戏");
+    gameStore.startNewGame(true);
+    
+    // 检查敌人是否生成
+    setTimeout(validateEnemyUnits, 100);
+  } else {
+    console.log("继续游戏成功，当前关卡:", gameStore.currentLevel);
+    console.log("玩家单位数:", gameStore.playerUnits.length);
+    console.log("敌人单位数:", gameStore.enemyUnits.length);
+  }
 }
 
 // 页面加载时初始化 (预加载游戏资源)
 onMounted(() => {
   console.log("GameStart组件已加载");
+  
+  // 检查是否有保存的游戏状态
+  try {
+    const savedState = localStorage.getItem('sudokuGameState');
+    if (savedState) {
+      const state = JSON.parse(savedState);
+      hasSavedGame.value = true;
+      console.log("发现已保存的游戏进度，关卡:", state.currentLevel);
+    }
+  } catch (error) {
+    console.error("检查存档状态时出错:", error);
+  }
 });
 </script>
 
@@ -67,38 +102,44 @@ onMounted(() => {
 }
 
 .game-start-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  background-color: #1a1a2e;
+  background-color: rgba(20, 20, 40, 0.9);
+  padding: 30px 50px;
   border-radius: 10px;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+  text-align: center;
+  border: 2px solid #55aaff;
+  box-shadow: 0 0 20px rgba(85, 170, 255, 0.5);
 }
 
 h1 {
-  color: white;
-  margin-bottom: 2rem;
-  font-size: 2rem;
-  text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+  color: #55aaff;
+  margin-bottom: 30px;
+  text-shadow: 0 0 10px rgba(85, 170, 255, 0.7);
 }
 
-.start-button {
-  padding: 0.8rem 2rem;
-  font-size: 1.2rem;
-  background-color: #ff5555;
+.start-button, .continue-button {
+  background-color: #333355;
   color: white;
-  border: none;
+  border: 2px solid #55aaff;
+  padding: 12px 24px;
+  font-size: 18px;
   border-radius: 5px;
   cursor: pointer;
+  margin: 10px;
+  min-width: 150px;
   transition: all 0.3s ease;
-  box-shadow: 0 0 10px rgba(255, 85, 85, 0.5);
 }
 
-.start-button:hover {
-  background-color: #ff3333;
+.start-button:hover, .continue-button:hover {
+  background-color: #55aaff;
   transform: scale(1.05);
-  box-shadow: 0 0 15px rgba(255, 85, 85, 0.7);
+}
+
+.continue-button {
+  background-color: #225533;
+  border-color: #55dd77;
+}
+
+.continue-button:hover {
+  background-color: #55dd77;
 }
 </style> 

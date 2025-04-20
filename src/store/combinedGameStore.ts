@@ -1,8 +1,8 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import type { Card, MinionCard, SpellCard, BuffCard } from '../types/Card'
 import { SudokuGenerator } from '../utils/SudokuGenerator'
-import { generateEnemiesForLevel, getLevel } from '../levels/levelManager'
+import { generateEnemiesForLevel, getLevel, LevelConfig } from '../levels/levelManager'
 
 /**
  * 本文件合并了两个游戏存储：
@@ -79,9 +79,15 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
     const playerUnits = ref<Unit[]>([])
     const enemyUnits = ref<Unit[]>([])
 
-    // 游戏初始化
-    function startNewGame() {
-        // 重置所有状态
+    // 游戏初始化，返回是否成功
+    function startNewGame(forceReset: boolean = false): boolean {
+        // 如果不是强制重置，则尝试从本地存储加载游戏状态
+        if (!forceReset && loadGameState()) {
+            showMessage('已恢复游戏进度！')
+            return true; // 成功加载存档
+        }
+
+        // 如果强制重置或没有存储的游戏状态，则重置所有状态
         turn.value = 1
         phase.value = 'deployment'
         currentBattle.value = 1
@@ -122,6 +128,11 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
         spawnEnemies()
         
         showMessage('游戏开始！')
+        
+        // 保存游戏状态
+        saveGameState()
+        
+        return false; // 返回false表示这是一个新游戏，而不是加载存档
     }
     
     // 生成数独谜题
@@ -288,6 +299,10 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
         grid.value[cellIndex].unit = unit
         
         console.log(`玩家在格子 ${cellIndex} (行${row}列${col}) 部署单位 ${unit.name}，格子数值: ${cellValue}`);
+        
+        if (grid.value[cellIndex].unit) {
+          saveGameState(); // 部署单位后保存状态
+        }
     }
     
     // 使用法术
@@ -554,6 +569,7 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
             }
             
             // 直接进入下一回合，跳过战斗阶段
+            saveGameState();
             startNextTurn();
         }
     }
@@ -578,6 +594,7 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
         showMessage('战斗开始！');
         
         // 执行战斗逻辑
+        saveGameState();
         executeBattle();
     }
     
@@ -615,6 +632,20 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
         } else {
             showMessage('恭喜！你通关了所有关卡！');
         }
+        
+        saveGameState();
+    }
+    
+    // 处理失败
+    function handleDefeat() {
+        phase.value = 'defeat';
+        showMessage('你被击败了...');
+        
+        // 游戏失败，3秒后重新开始，强制重置游戏
+        localStorage.removeItem('sudokuGameState');
+        setTimeout(() => {
+            startNewGame(true);
+        }, 3000);
     }
     
     // 准备下一关战斗
@@ -735,6 +766,168 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
         return (enemy.hp / enemy.maxHp) * 100
     })
     
+    // 保存游戏状态到本地存储
+    function saveGameState() {
+        try {
+            // 增加日志，显示当前要保存的单位数量
+            console.log(`准备保存游戏状态... 玩家单位: ${playerUnits.value.length}, 敌人单位: ${enemyUnits.value.length}`);
+            
+            const gameState = {
+                turn: turn.value,
+                phase: phase.value,
+                currentBattle: currentBattle.value,
+                completedBattles: completedBattles.value,
+                currentLevel: currentLevel.value,
+                player: player.value,
+                sudokuPuzzle: sudokuPuzzle.value,
+                sudokuSolution: sudokuSolution.value,
+                // 保存格子信息，包括占用状态和数值
+                grid: grid.value.map(cell => ({
+                    index: cell.index,
+                    occupied: cell.occupied,
+                    value: cell.value,
+                    // 不保存unit对象，因为这会在playerUnits中保存
+                })),
+                // 保存完整的牌库、手牌和弃牌堆状态
+                playerUnits: playerUnits.value,
+                enemyUnits: enemyUnits.value,
+                deck: deck.value,
+                hand: hand.value,
+                discard: discard.value
+            };
+            
+            localStorage.setItem('sudokuGameState', JSON.stringify(gameState));
+            console.log(`游戏状态已保存。玩家单位: ${gameState.playerUnits.length}, 敌人单位: ${gameState.enemyUnits.length}`);
+            return true;
+        } catch (error) {
+            console.error('保存游戏状态失败:', error);
+            return false;
+        }
+    }
+    
+    // 从本地存储加载游戏状态
+    function loadGameState(): boolean {
+        try {
+            const savedState = localStorage.getItem('sudokuGameState');
+            if (!savedState) {
+                console.log("没有找到存档。");
+                return false;
+            }
+            
+            console.log("开始加载游戏状态...");
+            const gameState = JSON.parse(savedState);
+            
+            // --- 恢复核心状态 ---
+            turn.value = gameState.turn;
+            phase.value = gameState.phase;
+            currentBattle.value = gameState.currentBattle;
+            completedBattles.value = gameState.completedBattles;
+            currentLevel.value = gameState.currentLevel;
+            player.value = gameState.player;
+            sudokuPuzzle.value = gameState.sudokuPuzzle;
+            sudokuSolution.value = gameState.sudokuSolution;
+            
+            // --- 恢复牌库状态 ---
+            deck.value = gameState.deck || [];
+            hand.value = gameState.hand || [];
+            discard.value = gameState.discard || [];
+            selectedCard.value = null; // 重置选中卡牌
+
+            // --- 恢复棋盘和单位状态 ---
+            
+            // 1. 恢复基础格子信息 (value, occupied - 稍后根据单位重置)
+            const initialGrid = Array(81).fill(null).map((_, i) => ({
+                index: i,
+                occupied: false, // 先设为false，后面根据单位重新设置
+                value: 0,
+                unit: undefined // 确保清空旧的unit引用
+            }));
+            if (gameState.grid) {
+                for (let i = 0; i < gameState.grid.length; i++) {
+                    if (initialGrid[i]) { // 检查是否存在
+                        initialGrid[i].value = gameState.grid[i]?.value || 0;
+                    }
+                }
+            }
+            grid.value = initialGrid;
+
+            // 2. 恢复单位列表
+            playerUnits.value = gameState.playerUnits || [];
+            enemyUnits.value = gameState.enemyUnits || [];
+
+            console.log(`尝试加载 ${playerUnits.value.length} 玩家单位和 ${enemyUnits.value.length} 敌人单位`);
+
+            // 3. 重新建立格子与单位的链接，并设置occupied状态
+            const linkUnitToCell = (unit: Unit) => {
+                if (unit.cellIndex !== undefined && unit.cellIndex >= 0 && unit.cellIndex < 81) {
+                    const cell = grid.value[unit.cellIndex];
+                    if (cell) {
+                        cell.unit = unit;
+                        cell.occupied = true; // 标记格子为占用
+                        console.log(`链接单位 ${unit.name} (ID: ${unit.id}) 到格子 ${cell.index}`);
+                    } else {
+                        console.warn(`加载时未找到单位 ${unit.name} (ID: ${unit.id}) 的目标格子: ${unit.cellIndex}`);
+                    }
+                } else {
+                    console.warn(`加载时单位 ${unit.name} (ID: ${unit.id}) 的 cellIndex 无效: ${unit.cellIndex}`);
+                }
+            };
+
+            playerUnits.value.forEach(linkUnitToCell);
+            enemyUnits.value.forEach(linkUnitToCell);
+
+            const linkedPlayerUnits = grid.value.filter(c => c.unit && playerUnits.value.some(pu => pu.id === c.unit?.id)).length;
+            const linkedEnemyUnits = grid.value.filter(c => c.unit && enemyUnits.value.some(eu => eu.id === c.unit?.id)).length;
+            console.log(`成功链接了 ${linkedPlayerUnits} 个玩家单位和 ${linkedEnemyUnits} 个敌人单位到棋盘`);
+
+            showMessage('游戏状态已加载');
+            console.log('游戏状态加载完成, 当前关卡:', currentLevel.value);
+            console.log(`牌库: ${deck.value.length}, 手牌: ${hand.value.length}, 弃牌: ${discard.value.length}`);
+            return true;
+        } catch (error) {
+            console.error('加载游戏状态失败:', error);
+            // 如果加载失败，清除可能损坏的存档
+            localStorage.removeItem('sudokuGameState'); 
+            return false;
+        }
+    }
+    
+    // 丢弃手牌
+    function discardHand() {
+        const cardsDiscarded = hand.value.length;
+        if (cardsDiscarded > 0) {
+            discard.value.push(...hand.value);
+            hand.value = [];
+        }
+        return cardsDiscarded;
+    }
+
+    // 选择卡牌
+    function selectCard(cardId: string | null) {
+        if (cardId === null) {
+            selectedCard.value = null;
+            return;
+        }
+        
+        selectedCard.value = hand.value.find(card => card.id === cardId) || null;
+    }
+    
+    // --- 生命周期钩子，用于自动保存 ---
+    const saveBeforeUnload = () => {
+      console.log('页面即将卸载，尝试保存游戏状态...');
+      saveGameState();
+    };
+
+    onMounted(() => {
+        window.addEventListener('beforeunload', saveBeforeUnload);
+    });
+
+    onUnmounted(() => {
+        window.removeEventListener('beforeunload', saveBeforeUnload);
+        // 可选：组件卸载时也保存一次，以防万一
+        saveGameState();
+    });
+
     return {
         // 状态
         turn,
@@ -742,34 +935,53 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
         currentBattle,
         completedBattles,
         message,
+        currentLevel,
         player,
+        
         deck,
         hand,
         discard,
         selectedCard,
+        
+        sudokuPuzzle,
+        sudokuSolution,
+        
         grid,
         playerUnits,
         enemyUnits,
+        
         availableCells,
         enemyHpPercent,
-        currentLevel,
         
         // 方法
         startNewGame,
+        generateSudokuPuzzle,
+        resetGrid,
+        initializeDeck,
         drawCards,
+        shuffleDeck,
+        discardHand,
+        selectCard,
         playCard,
-        endTurn,
-        selectCard: (cardId: string | null) => {
-            if (cardId === null) {
-                selectedCard.value = null
-                return
-            }
-            
-            selectedCard.value = hand.value.find(card => card.id === cardId) || null
-        },
-        showMessage,
+        deployUnit,
+        useSpell,
+        useGlobalSpell,
+        removeUnit,
+        shuffleDiscardIntoDeck,
         updateGameEngine,
-        startBattlePhase
+        showMessage,
+        endTurn,
+        startNextTurn,
+        startBattlePhase,
+        executeBattle,
+        handleVictory,
+        handleDefeat,
+        prepareNextBattle,
+        spawnEnemies,
+        
+        // 数据持久化方法
+        saveGameState,
+        loadGameState
     }
 })
 
