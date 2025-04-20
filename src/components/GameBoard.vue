@@ -215,7 +215,9 @@ function isEnemyUnit(unit: Unit): boolean {
 
 // 判断是否为玩家单位
 function isPlayerUnit(unit: Unit): boolean {
-  return unit.id.startsWith('player');
+  // 玩家单位的ID是卡牌ID加时间戳，而不是以'player'开头
+  // 检查单位是否存在于playerUnits数组中
+  return gameStore.playerUnits.some((playerUnit: Unit) => playerUnit.id === unit.id);
 }
 
 // 判断是否为中立单位
