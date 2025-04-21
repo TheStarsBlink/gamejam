@@ -42,7 +42,7 @@ export interface Cell {
 export const useSudokuGameStore = defineStore('sudokuGame', () => {
     // 游戏状态
     const turn = ref(1)
-    const phase = ref<'deployment' | 'victory' | 'defeat'>('deployment')
+    const phase = ref<'deployment' | 'battle' | 'victory' | 'defeat'>('deployment')
     const currentBattle = ref(1)
     const completedBattles = ref(0)
     const message = ref<string | null>(null)
@@ -584,6 +584,22 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
         showMessage(`第 ${turn.value} 回合开始！`);
     }
     
+    // 开始战斗阶段
+    function startBattlePhase() {
+        phase.value = 'battle';
+        showMessage('战斗开始！');
+        
+        // 执行战斗逻辑
+        saveGameState();
+        executeBattle();
+    }
+    
+    // 执行战斗
+    function executeBattle() {
+        // 简化的战斗逻辑实现
+        // ...
+    }
+    
     // 处理胜利
     function handleVictory() {
         phase.value = 'victory';
@@ -952,6 +968,8 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
         showMessage,
         endTurn,
         startNextTurn,
+        startBattlePhase,
+        executeBattle,
         handleVictory,
         handleDefeat,
         prepareNextBattle,
