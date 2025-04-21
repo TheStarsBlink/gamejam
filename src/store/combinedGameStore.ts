@@ -585,16 +585,6 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
         showMessage(`第 ${turn.value} 回合开始！`);
     }
     
-    // 开始战斗阶段
-    function startBattlePhase() {
-        phase.value = 'battle';
-        showMessage('战斗开始！');
-        
-        // 执行战斗逻辑
-        saveGameState();
-        executeBattle();
-    }
-    
     // 执行战斗
     function executeBattle() {
         // 简化的战斗逻辑实现
@@ -969,7 +959,6 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
         showMessage,
         endTurn,
         startNextTurn,
-        startBattlePhase,
         executeBattle,
         handleVictory,
         handleDefeat,

@@ -1,99 +1,123 @@
 /**
- * EventSystem 类 - 事件发布订阅系统
+ * EventSystem 类 - 事件系统
  * 
- * 提供游戏内事件的发布与订阅机制，实现组件间的松耦合通信
+ * 提供事件发布-订阅功能，用于游戏中各组件之间的通信。
+ * 采用观察者模式，允许组件注册事件监听器，并在事件触发时接收通知。
  */
 
-type EventCallback = (...args: any[]) => void;
+// 事件处理函数类型
+type EventHandler = (data?: any) => void;
 
 export class EventSystem {
-  private listeners: Map<string, EventCallback[]> = new Map();
+  // 存储事件及其处理函数的映射
+  private _eventHandlers: Map<string, EventHandler[]> = new Map();
   
   /**
-   * 订阅事件
+   * 注册事件监听器
    * @param eventName 事件名称
-   * @param callback 事件回调函数
-   * @returns 取消订阅的函数
+   * @param handler 事件处理函数
    */
-  public on(eventName: string, callback: EventCallback): () => void {
-    if (!this.listeners.has(eventName)) {
-      this.listeners.set(eventName, []);
-    }
+  public on(eventName: string, handler: EventHandler): void {
+    // 获取现有的处理函数列表，如果不存在则创建新的
+    const handlers = this._eventHandlers.get(eventName) || [];
     
-    const eventCallbacks = this.listeners.get(eventName)!;
-    eventCallbacks.push(callback);
+    // 添加新的处理函数
+    handlers.push(handler);
     
-    // 返回取消订阅的函数
-    return () => {
-      const callbackIndex = eventCallbacks.indexOf(callback);
-      if (callbackIndex !== -1) {
-        eventCallbacks.splice(callbackIndex, 1);
+    // 更新处理函数列表
+    this._eventHandlers.set(eventName, handlers);
+  }
+  
+  /**
+   * 取消事件监听器
+   * @param eventName 事件名称
+   * @param handler 要取消的处理函数，如果不提供则取消该事件的所有监听器
+   */
+  public off(eventName: string, handler?: EventHandler): void {
+    if (!handler) {
+      // 如果没有提供处理函数，则清除该事件的所有监听器
+      this._eventHandlers.delete(eventName);
+    } else {
+      // 获取现有的处理函数列表
+      const handlers = this._eventHandlers.get(eventName);
+      
+      if (handlers) {
+        // 移除指定的处理函数
+        const newHandlers = handlers.filter(h => h !== handler);
+        
+        if (newHandlers.length === 0) {
+          // 如果没有剩余的处理函数，则删除该事件
+          this._eventHandlers.delete(eventName);
+        } else {
+          // 更新处理函数列表
+          this._eventHandlers.set(eventName, newHandlers);
+        }
       }
+    }
+  }
+  
+  /**
+   * 触发事件，调用所有注册的处理函数
+   * @param eventName 事件名称
+   * @param data 事件数据
+   */
+  public emit(eventName: string, data?: any): void {
+    // 获取该事件的所有处理函数
+    const handlers = this._eventHandlers.get(eventName);
+    
+    if (handlers) {
+      // 调用所有处理函数
+      handlers.forEach(handler => {
+        try {
+          handler(data);
+        } catch (error) {
+          console.error(`Error in event handler for '${eventName}':`, error);
+        }
+      });
+    }
+  }
+  
+  /**
+   * 注册一次性事件监听器，触发后自动移除
+   * @param eventName 事件名称
+   * @param handler 事件处理函数
+   */
+  public once(eventName: string, handler: EventHandler): void {
+    // 创建一个包装函数，在调用原始处理函数后自动取消监听
+    const onceHandler = (data?: any) => {
+      // 调用原始处理函数
+      handler(data);
+      
+      // 取消监听
+      this.off(eventName, onceHandler);
     };
-  }
-  
-  /**
-   * 取消订阅事件
-   * @param eventName 事件名称
-   * @param callback 要取消的回调函数
-   */
-  public off(eventName: string, callback: EventCallback): void {
-    if (!this.listeners.has(eventName)) {
-      return;
-    }
     
-    const eventCallbacks = this.listeners.get(eventName)!;
-    const callbackIndex = eventCallbacks.indexOf(callback);
-    
-    if (callbackIndex !== -1) {
-      eventCallbacks.splice(callbackIndex, 1);
-    }
+    // 注册包装的处理函数
+    this.on(eventName, onceHandler);
   }
   
   /**
-   * 一次性订阅事件，触发后自动取消订阅
+   * 获取某个事件当前的监听器数量
    * @param eventName 事件名称
-   * @param callback 事件回调函数
+   * @returns 监听器数量
    */
-  public once(eventName: string, callback: EventCallback): void {
-    const unsubscribe = this.on(eventName, (...args) => {
-      callback(...args);
-      unsubscribe();
-    });
+  public listenerCount(eventName: string): number {
+    const handlers = this._eventHandlers.get(eventName);
+    return handlers ? handlers.length : 0;
   }
   
   /**
-   * 发布事件
-   * @param eventName 事件名称
-   * @param args 传递给事件处理函数的参数
+   * 获取所有已注册事件的名称
+   * @returns 事件名称数组
    */
-  public emit(eventName: string, ...args: any[]): void {
-    if (!this.listeners.has(eventName)) {
-      return;
-    }
-    
-    const eventCallbacks = this.listeners.get(eventName)!;
-    eventCallbacks.forEach(callback => {
-      try {
-        callback(...args);
-      } catch (error) {
-        console.error(`Error in event ${eventName} callback:`, error);
-      }
-    });
+  public eventNames(): string[] {
+    return Array.from(this._eventHandlers.keys());
   }
   
   /**
-   * 清除特定事件的所有监听器
-   * @param eventName 事件名称
+   * 清除所有事件和监听器
    */
-  public clearEvent(eventName: string): void {
-    this.listeners.delete(eventName);
-  }
-  
-  /**
-   * 清除所有事件监听器
-   */
-  public clearAllEvents(): void {
-    this.listeners.clear();
+  public clear(): void {
+    this._eventHandlers.clear();
   }
 } 
