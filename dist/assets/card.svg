@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="80" height="120" viewBox="0 0 80 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- 卡牌背景 -->
+  <rect x="5" y="5" width="70" height="110" rx="5" ry="5" fill="#eeeeee" stroke="#333333" stroke-width="2"/>
+  
+  <!-- 卡牌标题区域 -->
+  <rect x="10" y="10" width="60" height="20" rx="3" ry="3" fill="#aa0000"/>
+  
+  <!-- 卡牌图像区域 -->
+  <rect x="10" y="35" width="60" height="40" rx="2" ry="2" fill="#dddddd"/>
+  
+  <!-- 卡牌文本区域 -->
+  <rect x="10" y="80" width="60" height="30" rx="2" ry="2" fill="#dddddd"/>
+  
+  <!-- 模拟卡牌标题文本 -->
+  <path d="M20 23 L25 23 L28 20 L31 26 L34 18 L37 23 L40 23 L43 20 L46 26 L49 18 L52 23 L55 23" stroke="#ffffff" stroke-width="1.5" fill="none"/>
+  
+  <!-- 模拟卡牌图像 -->
+  <circle cx="40" cy="55" r="15" fill="#888888"/>
+  <path d="M30 55 L50 55 M40 45 L40 65" stroke="#444444" stroke-width="2"/>
+  
+  <!-- 模拟卡牌描述文本 -->
+  <path d="M15 85 L55 85" stroke="#999999" stroke-width="1"/>
+  <path d="M15 90 L55 90" stroke="#999999" stroke-width="1"/>
+  <path d="M15 95 L40 95" stroke="#999999" stroke-width="1"/>
+  <path d="M15 100 L50 100" stroke="#999999" stroke-width="1"/>
+  <path d="M15 105 L45 105" stroke="#999999" stroke-width="1"/>
+</svg> 

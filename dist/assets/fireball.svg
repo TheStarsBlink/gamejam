@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <!-- 火球中心 -->
+  <circle cx="50" cy="50" r="20" fill="#ff3300"/>
+  
+  <!-- 火球外焰 -->
+  <path d="M50 20 Q60 30 70 25 Q80 40 70 55 Q80 70 65 80 Q50 90 35 80 Q20 70 30 55 Q20 40 30 25 Q40 30 50 20" fill="#ff6600">
+    <animate attributeName="d" 
+             values="M50 20 Q60 30 70 25 Q80 40 70 55 Q80 70 65 80 Q50 90 35 80 Q20 70 30 55 Q20 40 30 25 Q40 30 50 20;
+                     M50 18 Q65 25 75 23 Q85 40 75 60 Q85 75 60 85 Q50 95 40 85 Q15 75 25 60 Q15 40 25 23 Q35 25 50 18;
+                     M50 20 Q60 30 70 25 Q80 40 70 55 Q80 70 65 80 Q50 90 35 80 Q20 70 30 55 Q20 40 30 25 Q40 30 50 20"
+             dur="1.5s"
+             repeatCount="indefinite" />
+  </path>
+  
+  <!-- 火花效果 -->
+  <g fill="#ffcc00">
+    <circle cx="50" cy="25" r="3">
+      <animate attributeName="r" values="3;5;3" dur="1s" repeatCount="indefinite" />
+    </circle>
+    <circle cx="75" cy="50" r="4">
+      <animate attributeName="r" values="4;6;4" dur="1.3s" repeatCount="indefinite" />
+    </circle>
+    <circle cx="50" cy="75" r="3">
+      <animate attributeName="r" values="3;5;3" dur="0.8s" repeatCount="indefinite" />
+    </circle>
+    <circle cx="25" cy="50" r="4">
+      <animate attributeName="r" values="4;6;4" dur="1.1s" repeatCount="indefinite" />
+    </circle>
+  </g>
+  
+  <!-- 中心亮点 -->
+  <circle cx="50" cy="50" r="10" fill="#ffff00">
+    <animate attributeName="r" values="10;12;10" dur="0.8s" repeatCount="indefinite" />
+  </circle>
+</svg> 
