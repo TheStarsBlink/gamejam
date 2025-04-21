@@ -7,15 +7,6 @@
     >
       {{ buttonText }}
     </button>
-    
-    <!-- 战斗按钮 -->
-    <button 
-      :disabled="!canStartBattle" 
-      @click="handleStartBattle"
-      :class="{ 'disabled': !canStartBattle, 'battle-button': true }"
-    >
-      开始战斗
-    </button>
   </div>
   
   <!-- 牌库为空时的提示 -->
@@ -37,12 +28,6 @@ const canEndTurn = computed(() => {
   return gameStore.phase === 'deployment';
 });
 
-// 检查是否可以开始战斗
-const canStartBattle = computed(() => {
-  // 只有在部署阶段且场上有单位时才能开始战斗
-  return gameStore.phase === 'deployment' && gameStore.playerUnits.length > 0;
-});
-
 // 检查牌库是否为空
 const isDeckEmpty = computed(() => {
   return gameStore.deck.length === 0;
@@ -56,7 +41,7 @@ const buttonText = computed(() => {
   } else if (gameStore.phase === 'deployment') {
     return '结束回合';
   } else {
-    return '战斗中...';
+    return '结束回合';
   }
 });
 
@@ -68,13 +53,6 @@ const handleEndTurn = useDebounceFn(() => {
       return;
     }
     gameStore.endTurn();
-  }
-}, 300); // 300ms防抖时间
-
-// 处理开始战斗
-const handleStartBattle = useDebounceFn(() => {
-  if (canStartBattle.value) {
-    gameStore.startBattlePhase();
   }
 }, 300); // 300ms防抖时间
 </script>
@@ -97,14 +75,6 @@ button {
   cursor: pointer;
   font-size: 16px;
   transition: background-color 0.3s;
-}
-
-button.battle-button {
-  background-color: #e74c3c; /* 红色背景表示战斗 */
-}
-
-button.battle-button:hover:not(.disabled) {
-  background-color: #c0392b; /* 深红色 */
 }
 
 button:hover:not(.disabled) {

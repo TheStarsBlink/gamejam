@@ -14,8 +14,10 @@ interface EnemyConfig {
   position?: number; // 初始位置，如果指定则会放置在特定格子，否则随机放置
 }
 
-// 关卡配置接口
-interface LevelConfig {
+/**
+ * 关卡配置接口
+ */
+export interface LevelConfig {
   id: number;
   name: string;
   description: string;

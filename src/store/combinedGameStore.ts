@@ -42,7 +42,7 @@ export interface Cell {
 export const useSudokuGameStore = defineStore('sudokuGame', () => {
     // 游戏状态
     const turn = ref(1)
-    const phase = ref<'deployment' | 'battle' | 'victory' | 'defeat'>('deployment')
+    const phase = ref<'deployment' | 'victory' | 'defeat'>('deployment')
     const currentBattle = ref(1)
     const completedBattles = ref(0)
     const message = ref<string | null>(null)
@@ -169,7 +169,7 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
             { id: '103', name: '闪电箭', description: '对目标造成2点伤害', type: 'spell', cost: 1, value: 2, rarity: 'common', image: 'assets/lightning.svg' },
             { id: '104', name: '强化术', description: '增强友方单位2点攻击力', type: 'spell', cost: 1, value: 2, rarity: 'common', image: 'assets/buff.svg' },
             { id: '105', name: '护甲术', description: '获得3点护甲', type: 'spell', cost: 1, value: 3, rarity: 'common', image: 'assets/armor.svg' },
-            { id: '106', name: '火焰风暴', description: '对所有敌方单位造成2点伤害', type: 'spell', cost: 1, rarity: 'rare', image: 'assets/firestorm.svg' },
+            { id: '106', name: '火焰风暴', description: '对所有敌方单位造成2点伤害', type: 'spell', cost: 1, value: 0, rarity: 'rare', image: 'assets/firestorm.svg' },
             { id: '107', name: '急速抽牌', description: '抽2张牌', type: 'spell', cost: 1, value: 2, rarity: 'uncommon', image: 'assets/draw.svg' },
             { id: '108', name: '熔岩爆裂', description: '对目标造成5点伤害', type: 'spell', cost: 1, value: 5, rarity: 'uncommon', image: 'assets/lava-burst.svg' },
             { id: '109', name: '群体治疗', description: '治疗所有友方单位2点生命', type: 'spell', cost: 1, value: 2, rarity: 'rare', image: 'assets/mass-heal.svg' },
@@ -558,16 +558,15 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
     // 结束回合
     function endTurn() {
         if (phase.value === 'deployment') {
-            // 将所有剩余手牌放入弃牌堆
-            if (hand.value.length > 0) {
-                discard.value.push(...hand.value);
-                hand.value = [];
-                showMessage('剩余手牌已放入弃牌堆');
+            const cardsDiscarded = discardHand();
+            if (cardsDiscarded > 0) {
+              showMessage('剩余手牌已放入弃牌堆');
             }
-            
-            // 直接进入下一回合，跳过战斗阶段
-            saveGameState();
+            saveGameState(); // 结束部署回合时保存
             startNextTurn();
+        } else {
+            // 如果不是部署阶段，可能需要处理其他逻辑或只是忽略
+            console.warn(`endTurn called during unexpected phase: ${phase.value}`);
         }
     }
     
@@ -583,22 +582,6 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
         drawCards(3);
         
         showMessage(`第 ${turn.value} 回合开始！`);
-    }
-    
-    // 开始战斗阶段
-    function startBattlePhase() {
-        phase.value = 'battle';
-        showMessage('战斗开始！');
-        
-        // 执行战斗逻辑
-        saveGameState();
-        executeBattle();
-    }
-    
-    // 执行战斗
-    function executeBattle() {
-        // 简化的战斗逻辑实现
-        // ...
     }
     
     // 处理胜利
@@ -969,8 +952,6 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
         showMessage,
         endTurn,
         startNextTurn,
-        startBattlePhase,
-        executeBattle,
         handleVictory,
         handleDefeat,
         prepareNextBattle,
