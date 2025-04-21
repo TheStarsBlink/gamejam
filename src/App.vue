@@ -17,6 +17,9 @@
 
     <!-- 游戏消息提示 -->
     <GameMessage v-if="gameStore.message" :message="gameStore.message" />
+    
+    <!-- 战斗日志 -->
+    <BattleLogs />
   </div>
 </template>
 
@@ -29,6 +32,7 @@ import CardHand from './components/CardHand.vue';
 import GameControls from './components/GameControls.vue';
 import GameMessage from './components/GameMessage.vue';
 import GameStart from './components/GameStart.vue';
+import BattleLogs from './components/BattleLogs.vue';
 
 const gameStore = useGameStore();
 

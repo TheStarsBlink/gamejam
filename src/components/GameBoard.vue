@@ -498,8 +498,42 @@ function startRegionBattle(regionIndex: number) {
   console.log("战斗开始:", regionIndex + 1);
   console.log("敌人战斗力:", enemyPower, "玩家战斗力:", playerPower);
   
+  // 添加战斗开始的日志
+  gameStore.addBattleLog(`区域${regionIndex + 1}战斗开始！`, 'special');
+  
+  // 记录参战单位
+  gameStore.addBattleLog(`敌方单位: ${enemyUnits.map((u: Unit) => u.name).join('、')}`, 'info');
+  gameStore.addBattleLog(`我方单位: ${playerUnitsInRegion.map((u: Unit) => u.name).join('、')}`, 'info');
+  gameStore.addBattleLog(`敌方战斗力: ${enemyPower}, 我方战斗力: ${playerPower}`, 'info');
+  
   // 模拟战斗过程
   setTimeout(() => {
+    // 记录战斗过程
+    gameStore.addBattleLog(`战斗进行中...`, 'info');
+    
+    // 模拟几回合的战斗过程
+    let round = 1;
+    const totalRounds = 3; // 模拟3回合
+    
+    // 简单模拟几个回合的战斗
+    for (let i = 0; i < totalRounds; i++) {
+      gameStore.addBattleLog(`回合 ${round}:`, 'info');
+      
+      // 随机选择一个玩家单位和敌方单位进行交互
+      if (playerUnitsInRegion.length > 0 && enemyUnits.length > 0) {
+        const playerUnit = playerUnitsInRegion[Math.floor(Math.random() * playerUnitsInRegion.length)];
+        const enemyUnit = enemyUnits[Math.floor(Math.random() * enemyUnits.length)];
+        
+        // 玩家攻击敌人
+        gameStore.addBattleLog(`${playerUnit.name} 对 ${enemyUnit.name} 造成 ${playerUnit.atk} 点伤害`, 'damage');
+        
+        // 敌人反击
+        gameStore.addBattleLog(`${enemyUnit.name} 对 ${playerUnit.name} 造成 ${enemyUnit.atk} 点伤害`, 'damage');
+      }
+      
+      round++;
+    }
+    
     // 简化版战斗逻辑
     if (playerPower >= enemyPower) {
       // 玩家胜利，移除所有敌人
@@ -521,13 +555,26 @@ function startRegionBattle(regionIndex: number) {
       
       // 设置战斗结果
       battleResult.value = `胜利！击败了${enemyUnits.length}个敌人`;
+      
+      // 记录胜利日志
+      gameStore.addBattleLog(`战斗胜利！我方击败了${enemyUnits.length}个敌人`, 'special');
+      enemyUnits.forEach((enemy: Unit) => {
+        gameStore.addBattleLog(`${enemy.name} 被击败了！`, 'special');
+      });
     } else {
       // 玩家失败，区域内的玩家单位损失一定生命值
       for (const unit of playerUnitsInRegion) {
         unit.hp = Math.max(1, unit.hp - 1); // 确保不会死亡，最低为1
+        gameStore.addBattleLog(`${unit.name} 受到伤害，生命值降至 ${unit.hp}`, 'damage');
       }
       battleResult.value = "失败！您的单位受到了伤害";
+      
+      // 记录失败日志
+      gameStore.addBattleLog(`战斗失败！我方单位受到了伤害`, 'special');
     }
+    
+    // 记录战斗结束
+    gameStore.addBattleLog(`区域${regionIndex + 1}战斗结束！`, 'special');
     
     isBattling.value = false;
   }, 1000); // 1秒后显示结果

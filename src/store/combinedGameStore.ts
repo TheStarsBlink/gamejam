@@ -38,6 +38,12 @@ export interface Cell {
     value: number;
 }
 
+// 战斗日志消息类型
+export interface BattleLogMessage {
+  text: string;
+  type: 'info' | 'damage' | 'heal' | 'special';
+}
+
 // 数独游戏存储
 export const useSudokuGameStore = defineStore('sudokuGame', () => {
     // 游戏状态
@@ -78,6 +84,10 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
     })))
     const playerUnits = ref<Unit[]>([])
     const enemyUnits = ref<Unit[]>([])
+
+    // 战斗日志
+    const battleLog = ref<BattleLogMessage | null>(null);
+    const battleLogHistory = ref<BattleLogMessage[]>([]);
 
     // 游戏初始化，返回是否成功
     function startNewGame(forceReset: boolean = false): boolean {
@@ -313,9 +323,12 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
                 targetCell.unit.hp -= damage
                 
                 showMessage(`对 ${targetCell.unit.name} 造成了 ${damage} 点伤害`)
+                // 添加法术伤害日志
+                addBattleLog(`使用 ${card.name} 对 ${targetCell.unit.name} 造成了 ${damage} 点伤害`, 'damage');
                 
                 // 检查敌方单位是否死亡
                 if (targetCell.unit.hp <= 0) {
+                    addBattleLog(`${targetCell.unit.name} 被消灭了！`, 'special');
                     removeUnit(targetCell.unit.id)
                     showMessage(`${targetCell.unit.name} 被消灭了！`)
                 }
@@ -326,10 +339,21 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
                     const healing = card.value
                     targetCell.unit.hp = Math.min(targetCell.unit.hp + healing, targetCell.unit.maxHp)
                     showMessage(`治疗了 ${targetCell.unit.name} ${healing} 点生命`)
+                    addBattleLog(`使用 ${card.name} 治疗了 ${targetCell.unit.name} ${healing} 点生命值`, 'heal');
                 } else if (card.description.includes('增强')) {
                     targetCell.unit.atk += card.value
                     showMessage(`增强了 ${targetCell.unit.name} ${card.value} 点攻击力`)
+                    addBattleLog(`使用 ${card.name} 增强了 ${targetCell.unit.name} ${card.value} 点攻击力`, 'special');
                 }
+            }
+        }
+        
+        if (card.name === '治疗术') {
+            const targetUnit = grid.value[targetIndex].unit;
+            if (targetUnit) {
+                const healAmount = card.value;
+                targetUnit.hp = Math.min(targetUnit.hp + healAmount, targetUnit.maxHp);
+                addBattleLog(`${targetUnit.name} 恢复了 ${healAmount} 点生命值`, 'heal');
             }
         }
     }
@@ -588,6 +612,8 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
     function startBattlePhase() {
         phase.value = 'battle';
         showMessage('战斗开始！');
+        // 添加战斗开始的日志
+        addBattleLog('战斗开始！', 'special');
         
         // 执行战斗逻辑
         saveGameState();
@@ -596,13 +622,61 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
     
     // 执行战斗
     function executeBattle() {
-        // 简化的战斗逻辑实现
-        // ...
+        // 添加战斗开始日志
+        addBattleLog('开始计算战斗结果...', 'info');
+        
+        // 遍历所有单位进行战斗
+        playerUnits.value.forEach(playerUnit => {
+            enemyUnits.value.forEach(enemyUnit => {
+                // 计算伤害
+                const damage = playerUnit.atk;
+                enemyUnit.hp -= damage;
+                
+                // 添加伤害日志
+                addBattleLog(`${playerUnit.name} 对 ${enemyUnit.name} 造成了 ${damage} 点伤害`, 'damage');
+                
+                // 如果单位死亡
+                if (enemyUnit.hp <= 0) {
+                    addBattleLog(`${enemyUnit.name} 被击败了！`, 'special');
+                    removeUnit(enemyUnit.id);
+                }
+            });
+        });
+        
+        // 敌方单位反击
+        enemyUnits.value.forEach(enemyUnit => {
+            playerUnits.value.forEach(playerUnit => {
+                const damage = enemyUnit.atk;
+                playerUnit.hp -= damage;
+                
+                addBattleLog(`${enemyUnit.name} 对 ${playerUnit.name} 造成了 ${damage} 点伤害`, 'damage');
+                
+                if (playerUnit.hp <= 0) {
+                    addBattleLog(`${playerUnit.name} 被击败了！`, 'special');
+                    removeUnit(playerUnit.id);
+                }
+            });
+        });
+        
+        // 检查战斗结果
+        if (enemyUnits.value.length === 0) {
+            addBattleLog('战斗胜利！', 'special');
+            handleVictory();
+        } else if (playerUnits.value.length === 0) {
+            addBattleLog('战斗失败！', 'special');
+            handleDefeat();
+        } else {
+            // 如果双方都有存活单位，则显示战斗未结束
+            addBattleLog('战斗结束，但双方都有存活单位。', 'info');
+        }
     }
     
     // 处理胜利
     function handleVictory() {
         phase.value = 'victory';
+        
+        // 添加战斗胜利的日志
+        addBattleLog('恭喜！战斗胜利！', 'special');
         
         // 获取奖励
         const level = getLevel(currentLevel.value);
@@ -610,6 +684,7 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
             if (level.rewards.gold) {
                 player.value.gold += level.rewards.gold;
                 showMessage(`获得 ${level.rewards.gold} 金币！`);
+                addBattleLog(`获得了 ${level.rewards.gold} 金币奖励！`, 'special');
             }
         }
         
@@ -621,12 +696,14 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
         // 如果有下一关，准备进入下一关
         if (hasNextLevel) {
             showMessage('准备进入下一关...');
+            addBattleLog('准备进入下一关...', 'info');
             setTimeout(() => {
                 currentLevel.value++;
                 prepareNextBattle();
             }, 2000);
         } else {
             showMessage('恭喜！你通关了所有关卡！');
+            addBattleLog('恭喜！你通关了所有关卡！', 'special');
         }
         
         saveGameState();
@@ -635,7 +712,10 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
     // 处理失败
     function handleDefeat() {
         phase.value = 'defeat';
+        
         showMessage('你被击败了...');
+        addBattleLog('你被击败了...', 'damage');
+        addBattleLog('战斗失败，即将重新开始游戏', 'info');
         
         // 游戏失败，3秒后重新开始，强制重置游戏
         localStorage.removeItem('sudokuGameState');
@@ -646,6 +726,9 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
     
     // 准备下一关战斗
     function prepareNextBattle() {
+        // 记录进入下一关的日志
+        addBattleLog(`开始准备第 ${currentLevel.value} 关战斗`, 'info');
+        
         // 重置游戏状态准备下一关
         phase.value = 'deployment';
         turn.value = 1;
@@ -681,8 +764,10 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
         // 显示关卡信息
         if (levelConfig) {
             showMessage(`第${currentLevel.value}关: ${levelConfig.name}`);
+            addBattleLog(`进入第${currentLevel.value}关: ${levelConfig.name}`, 'special');
         } else {
             showMessage(`第${currentLevel.value}关开始！`);
+            addBattleLog(`进入第${currentLevel.value}关！`, 'special');
         }
     }
     
@@ -924,6 +1009,36 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
         saveGameState();
     });
 
+    // 添加战斗日志
+    function addBattleLog(text: string, type: BattleLogMessage['type'] = 'info') {
+        console.log(`[BattleLog] ${type}: ${text}`);
+        
+        const message: BattleLogMessage = { text, type };
+        battleLog.value = message;
+        battleLogHistory.value.push(message);
+        
+        // 如果历史记录超过100条，移除最旧的
+        if (battleLogHistory.value.length > 100) {
+            battleLogHistory.value.shift();
+        }
+        
+        // 确保消息被添加到历史记录中
+        console.log(`当前战斗日志数量: ${battleLogHistory.value.length}`);
+    }
+
+    // 添加测试战斗日志 - 用于调试
+    function addTestBattleLogs() {
+        console.log("添加测试战斗日志");
+        addBattleLog("测试战斗开始", "special");
+        addBattleLog("小恶魔 对 骷髅兵 造成了 2 点伤害", "damage");
+        addBattleLog("骷髅兵 对 小恶魔 造成了 1 点伤害", "damage");
+        addBattleLog("恶魔战士 恢复了 3 点生命值", "heal");
+        
+        // 记录当前日志历史数量
+        console.log(`当前战斗日志数量: ${battleLogHistory.value.length}`);
+        console.log(battleLogHistory.value);
+    }
+
     return {
         // 状态
         turn,
@@ -977,7 +1092,11 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
         
         // 数据持久化方法
         saveGameState,
-        loadGameState
+        loadGameState,
+        battleLog,
+        battleLogHistory,
+        addBattleLog,
+        addTestBattleLogs,
     }
 })
 
