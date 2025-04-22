@@ -19,9 +19,8 @@
         </div>
       </div>
       
-      <!-- 测试按钮区域 -->
+      <!-- 控制按钮区域 -->
       <div class="battle-logs-controls">
-        <button class="test-log-btn" @click="addTestLog">测试日志</button>
         <button class="clear-log-btn" @click="clearLogs">清空日志</button>
       </div>
     </div>
@@ -44,6 +43,7 @@ const logsContainer = ref<HTMLElement | null>(null);
 
 // 添加日志
 function addLog(text: string, type: BattleLog['type'] = 'info') {
+  console.log('addLog', text, type);
   battleLogs.value.push({ text, type });
   // 限制日志数量
   if (battleLogs.value.length > 100) {
@@ -51,15 +51,6 @@ function addLog(text: string, type: BattleLog['type'] = 'info') {
   }
   // 滚动到底部
   scrollToBottom();
-}
-
-// 添加测试日志
-function addTestLog() {
-  addLog(`测试战斗日志 - ${new Date().toLocaleTimeString()}`, 'info');
-  addLog('小恶魔 对 骷髅兵 造成了 2 点伤害', 'damage');
-  addLog('骷髅兵 对 小恶魔 造成了 1 点伤害', 'damage');
-  addLog('恶魔战士 恢复了 3 点生命值', 'heal');
-  addLog('骷髅兵 被击败了!', 'special');
 }
 
 // 清空日志
@@ -83,9 +74,18 @@ watch(() => gameStore.battleLog, (newLog: BattleLogMessage | null) => {
   }
 }, { deep: true });
 
-// 组件挂载时，添加一些初始日志
+// 组件挂载时，初始化日志
 onMounted(() => {
+  // 清空日志
+  clearLogs();
   addLog('战斗日志组件已加载', 'info');
+  
+  // 从历史记录中恢复日志
+  if (gameStore.battleLogHistory.length > 0) {
+    gameStore.battleLogHistory.forEach(log => {
+      addLog(log.text, log.type);
+    });
+  }
 });
 
 // 导出方法，允许其他组件调用
@@ -99,8 +99,8 @@ defineExpose({
   position: absolute;
   top: 10px;
   right: 10px;
-  width: 300px;
-  background-color: rgba(0, 0, 0, 0.7);
+  width: 350px;
+  background-color: rgba(0, 0, 0, 0.8);
   border-radius: 5px;
   overflow: hidden;
   z-index: 1000;
@@ -137,30 +137,51 @@ defineExpose({
 
 .close-logs-btn:hover, .expand-logs-btn:hover {
   background-color: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
 .battle-logs-content {
   display: flex;
   flex-direction: column;
-  max-height: 300px;
+  max-height: 400px;
 }
 
 .logs-list {
-  flex: 1;
+  max-height: 350px;
   overflow-y: auto;
   padding: 8px;
-  max-height: 250px;
+  font-size: 13px;
   color: #fff;
-  font-size: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: #666 #333;
+}
+
+.logs-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.logs-list::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.logs-list::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
 }
 
 .log-entry {
-  padding: 4px 8px;
-  margin: 2px 0;
+  padding: 6px 10px;
+  margin: 4px 0;
   border-radius: 4px;
+  line-height: 1.4;
   animation: fadeIn 0.3s ease-in;
-  line-height: 1.3;
+}
+
+.empty-logs {
+  text-align: center;
+  padding: 20px;
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
 }
 
 @keyframes fadeIn {
@@ -169,55 +190,55 @@ defineExpose({
 }
 
 .log-entry.info {
-  background-color: rgba(0, 100, 255, 0.2);
+  background-color: rgba(0, 100, 255, 0.15);
+  border-left: 3px solid rgba(0, 100, 255, 0.5);
 }
 
 .log-entry.damage {
-  background-color: rgba(255, 50, 50, 0.2);
+  background-color: rgba(255, 50, 50, 0.15);
+  border-left: 3px solid rgba(255, 50, 50, 0.5);
+  font-weight: bold;
 }
 
 .log-entry.heal {
-  background-color: rgba(50, 255, 50, 0.2);
+  background-color: rgba(50, 255, 50, 0.15);
+  border-left: 3px solid rgba(50, 255, 50, 0.5);
 }
 
 .log-entry.special {
-  background-color: rgba(255, 255, 50, 0.2);
-}
-
-.empty-logs {
-  text-align: center;
-  padding: 20px;
-  color: rgba(255, 255, 255, 0.5);
+  background-color: rgba(255, 255, 50, 0.15);
+  border-left: 3px solid rgba(255, 255, 50, 0.5);
+  font-weight: bold;
 }
 
 .battle-logs-controls {
   display: flex;
+  justify-content: center;
   padding: 8px;
-  gap: 8px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
-  background-color: rgba(0, 0, 0, 0.3);
 }
 
-.test-log-btn, .clear-log-btn {
-  flex: 1;
-  padding: 6px;
-  background-color: rgba(50, 120, 200, 0.5);
-  color: white;
-  border: none;
-  border-radius: 4px;
+.battle-logs-controls button {
+  padding: 4px 10px;
+  margin: 0 5px;
+  background-color: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  border-radius: 3px;
   cursor: pointer;
   font-size: 12px;
+  transition: background-color 0.2s;
+}
+
+.battle-logs-controls button:hover {
+  background-color: rgba(0, 0, 0, 0.5);
 }
 
 .clear-log-btn {
-  background-color: rgba(200, 50, 50, 0.5);
-}
-
-.test-log-btn:hover {
-  background-color: rgba(50, 120, 200, 0.7);
+  background-color: rgba(255, 50, 50, 0.3) !important;
 }
 
 .clear-log-btn:hover {
-  background-color: rgba(200, 50, 50, 0.7);
+  background-color: rgba(255, 50, 50, 0.5) !important;
 }
 </style> 

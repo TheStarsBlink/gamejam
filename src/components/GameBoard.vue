@@ -504,38 +504,66 @@ function startRegionBattle(regionIndex: number) {
   // 记录参战单位
   gameStore.addBattleLog(`敌方单位: ${enemyUnits.map((u: Unit) => u.name).join('、')}`, 'info');
   gameStore.addBattleLog(`我方单位: ${playerUnitsInRegion.map((u: Unit) => u.name).join('、')}`, 'info');
-  gameStore.addBattleLog(`敌方战斗力: ${enemyPower}, 我方战斗力: ${playerPower}`, 'info');
+  
+  // 修改这里，分别记录战斗力和单位实际攻击力
+  gameStore.addBattleLog(`敌方战斗力: ${enemyPower}，我方战斗力: ${playerPower}`, 'info');
+  
+  // 添加实际攻击力的日志记录
+  gameStore.addBattleLog(`敌方单位攻击力: ${enemyUnits.map((u: Unit) => `${u.name}(${u.atk})`).join('、')}`, 'info');
+  gameStore.addBattleLog(`我方单位攻击力: ${playerUnitsInRegion.map((u: Unit) => `${u.name}(${u.atk})`).join('、')}`, 'info');
   
   // 模拟战斗过程
+  // 简化的战斗系统，基于单位战斗力的比较
   setTimeout(() => {
-    // 记录战斗过程
-    gameStore.addBattleLog(`战斗进行中...`, 'info');
-    
-    // 模拟几回合的战斗过程
-    let round = 1;
-    const totalRounds = 3; // 模拟3回合
-    
-    // 简单模拟几个回合的战斗
-    for (let i = 0; i < totalRounds; i++) {
-      gameStore.addBattleLog(`回合 ${round}:`, 'info');
+    if (playerPower >= enemyPower) {
+      // 详细记录战斗过程
+      gameStore.addBattleLog(`战斗详细过程：`, 'info');
       
-      // 随机选择一个玩家单位和敌方单位进行交互
-      if (playerUnitsInRegion.length > 0 && enemyUnits.length > 0) {
-        const playerUnit = playerUnitsInRegion[Math.floor(Math.random() * playerUnitsInRegion.length)];
-        const enemyUnit = enemyUnits[Math.floor(Math.random() * enemyUnits.length)];
+      // 创建战斗单位顺序列表 (简单地将双方单位合并后打乱顺序模拟回合制战斗)
+      const allUnits = [...playerUnitsInRegion, ...enemyUnits].sort(() => Math.random() - 0.5);
+      
+      // 每个单位行动一次
+      for (let i = 0; i < allUnits.length; i++) {
+        const attacker = allUnits[i];
         
-        // 玩家攻击敌人
-        gameStore.addBattleLog(`${playerUnit.name} 对 ${enemyUnit.name} 造成 ${playerUnit.atk} 点伤害`, 'damage');
+        // 跳过已经死亡的单位
+        if (attacker.hp <= 0) continue;
         
-        // 敌人反击
-        gameStore.addBattleLog(`${enemyUnit.name} 对 ${playerUnit.name} 造成 ${enemyUnit.atk} 点伤害`, 'damage');
+        // 确定攻击目标
+        let targets = attacker.id.startsWith('player') ? 
+            enemyUnits.filter(unit => unit.hp > 0) : 
+            playerUnitsInRegion.filter(unit => unit.hp > 0);
+        
+        // 如果没有目标则跳过
+        if (targets.length === 0) {
+          gameStore.addBattleLog(`${attacker.name}(攻击力${attacker.atk}, 生命值${attacker.hp}) 没有找到目标`, 'info');
+          continue;
+        }
+        
+        // 随机选择一个目标
+        const target = targets[Math.floor(Math.random() * targets.length)];
+        
+        // 记录攻击前的状态
+        const originalHp = target.hp;
+        
+        // 计算伤害 (可以加入更复杂的伤害计算逻辑)
+        const damage = attacker.atk;
+        
+        // 应用伤害
+        target.hp = Math.max(0, target.hp - damage);
+        
+        // 记录攻击过程
+        gameStore.addBattleLog(
+          `${attacker.name}(攻击力${attacker.atk}, 生命值${attacker.hp}) 攻击 ${target.name}, 造成${damage}点伤害, ${target.name}生命值从${originalHp}降至${target.hp}`, 
+          'damage'
+        );
+        
+        // 检查目标是否死亡
+        if (target.hp <= 0) {
+          gameStore.addBattleLog(`${target.name} 被击败！`, 'special');
+        }
       }
       
-      round++;
-    }
-    
-    // 简化版战斗逻辑
-    if (playerPower >= enemyPower) {
       // 玩家胜利，移除所有敌人
       for (const enemy of enemyUnits) {
         if (enemy.cellIndex !== undefined) {
@@ -558,14 +586,64 @@ function startRegionBattle(regionIndex: number) {
       
       // 记录胜利日志
       gameStore.addBattleLog(`战斗胜利！我方击败了${enemyUnits.length}个敌人`, 'special');
-      enemyUnits.forEach((enemy: Unit) => {
-        gameStore.addBattleLog(`${enemy.name} 被击败了！`, 'special');
-      });
     } else {
+      // 详细记录战斗过程
+      gameStore.addBattleLog(`战斗详细过程：`, 'info');
+      
+      // 创建战斗单位顺序列表 (简单地将双方单位合并后打乱顺序模拟回合制战斗)
+      const allUnits = [...playerUnitsInRegion, ...enemyUnits].sort(() => Math.random() - 0.5);
+      
+      // 每个单位行动一次
+      for (let i = 0; i < allUnits.length; i++) {
+        const attacker = allUnits[i];
+        
+        // 跳过已经死亡的单位
+        if (attacker.hp <= 0) continue;
+        
+        // 确定攻击目标
+        let targets = attacker.id.startsWith('player') ? 
+            enemyUnits.filter(unit => unit.hp > 0) : 
+            playerUnitsInRegion.filter(unit => unit.hp > 0);
+        
+        // 如果没有目标则跳过
+        if (targets.length === 0) {
+          gameStore.addBattleLog(`${attacker.name}(攻击力${attacker.atk}, 生命值${attacker.hp}) 没有找到目标`, 'info');
+          continue;
+        }
+        
+        // 随机选择一个目标
+        const target = targets[Math.floor(Math.random() * targets.length)];
+        
+        // 记录攻击前的状态
+        const originalHp = target.hp;
+        
+        // 计算伤害 (可以加入更复杂的伤害计算逻辑)
+        const damage = attacker.atk;
+        
+        // 应用伤害
+        target.hp = Math.max(0, target.hp - damage);
+        
+        // 记录攻击过程
+        gameStore.addBattleLog(
+          `${attacker.name}(攻击力${attacker.atk}, 生命值${attacker.hp}) 攻击 ${target.name}, 造成${damage}点伤害, ${target.name}生命值从${originalHp}降至${target.hp}`, 
+          'damage'
+        );
+        
+        // 检查目标是否死亡
+        if (target.hp <= 0) {
+          gameStore.addBattleLog(`${target.name} 被击败！`, 'special');
+        }
+      }
+      
       // 玩家失败，区域内的玩家单位损失一定生命值
       for (const unit of playerUnitsInRegion) {
-        unit.hp = Math.max(1, unit.hp - 1); // 确保不会死亡，最低为1
-        gameStore.addBattleLog(`${unit.name} 受到伤害，生命值降至 ${unit.hp}`, 'damage');
+        const originalHp = unit.hp;
+        // 计算实际伤害，这里简化为1，可以根据需要调整
+        const actualDamage = 1; 
+        unit.hp = Math.max(1, unit.hp - actualDamage); // 确保不会死亡，最低为1
+        if (unit.hp != originalHp) {
+          gameStore.addBattleLog(`战斗失败导致 ${unit.name} 受到额外伤害，生命值从 ${originalHp} 降至 ${unit.hp}`, 'damage');
+        }
       }
       battleResult.value = "失败！您的单位受到了伤害";
       

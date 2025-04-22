@@ -242,25 +242,37 @@ export class BattleManager {
     this.addBattleLog(`${attackerType}单位 ${attacker.name} 攻击 ${targetType}单位 ${target.name}`);
     
     // 计算伤害
-    const damage = attacker.attack;
+    const baseAttack = attacker.attack;
     
     // 记录目标当前生命值
     const originalHp = target.hp;
     
+    // 计算实际伤害（考虑护甲等因素）
+    // 这里简化处理，实际情况可能更复杂
+    let actualDamage = baseAttack;
+    
+    // 应用护甲减伤（如果目标有护甲属性）
+    if (target.armor !== undefined && target.armor > 0) {
+      const absorbedDamage = Math.min(target.armor, actualDamage);
+      actualDamage -= absorbedDamage;
+      // 如果有护甲系统，这里可以更新护甲值
+      // target.armor -= absorbedDamage;
+    }
+    
     // 应用伤害
-    target.hp -= damage;
+    target.hp -= actualDamage;
     
     // 确保生命值不会低于0
     if (target.hp < 0) target.hp = 0;
     
-    // 记录攻击结果
-    this.addBattleLog(`${attacker.name} 造成 ${damage} 点伤害，${target.name} 生命值从 ${originalHp} 降至 ${target.hp}`);
+    // 记录攻击结果，使用实际伤害值
+    this.addBattleLog(`${attacker.name} 造成 ${actualDamage} 点伤害，${target.name} 生命值从 ${originalHp} 降至 ${target.hp}`);
     
     // 触发攻击事件
     this._eventSystem.emit('unit_attack', {
       attacker, 
       target, 
-      damage,
+      damage: actualDamage,
       targetRemainHp: target.hp
     });
     

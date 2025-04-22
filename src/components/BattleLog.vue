@@ -1,6 +1,6 @@
 <template>
   <div class="battle-log">
-    <div class="battle-log-header">战斗记录</div>
+    <div class="battle-log-header">战斗详细记录</div>
     <div class="battle-log-content" ref="messageList">
       <div 
         v-for="(message, index) in gameStore.battleLogHistory" 
@@ -8,6 +8,9 @@
         :class="['message', message.type]"
       >
         {{ message.text }}
+      </div>
+      <div v-if="gameStore.battleLogHistory.length === 0" class="no-logs">
+        暂无战斗记录
       </div>
     </div>
   </div>
@@ -20,22 +23,18 @@ import { useGameStore } from '@/store/gameStore';
 const gameStore = useGameStore();
 const messageList = ref<HTMLElement | null>(null);
 
-// 在组件挂载时添加测试消息
+// 在组件挂载时添加初始化消息并设置自动滚动
 onMounted(() => {
-  // 添加测试消息
   console.log("战斗日志组件已挂载");
-  gameStore.addBattleLog("测试消息 - 战斗日志组件已挂载", "info");
-  gameStore.addBattleLog("测试伤害消息", "damage");
-  gameStore.addBattleLog("测试治疗消息", "heal");
-  gameStore.addBattleLog("测试特殊消息", "special");
   
+  // 定义滚动到底部的函数
   const scrollToBottom = () => {
     if (messageList.value) {
       messageList.value.scrollTop = messageList.value.scrollHeight;
     }
   };
   
-  // 创建一个 MutationObserver 来监听内容变化
+  // 监听日志内容变化，自动滚动到底部
   const observer = new MutationObserver(scrollToBottom);
   
   if (messageList.value) {
@@ -49,6 +48,9 @@ onMounted(() => {
   onUnmounted(() => {
     observer.disconnect();
   });
+  
+  // 初始化时滚动到底部
+  scrollToBottom();
 });
 </script>
 
@@ -60,6 +62,7 @@ onMounted(() => {
   background-color: rgba(0, 0, 0, 0.2);
   border-radius: 6px;
   overflow: hidden;
+  min-height: 300px; /* 增加最小高度 */
 }
 
 .battle-log-header {
@@ -79,10 +82,11 @@ onMounted(() => {
   color: #fff;
   scrollbar-width: thin;
   scrollbar-color: #666 #333;
+  max-height: 500px; /* 增加最大高度 */
 }
 
 .battle-log-content::-webkit-scrollbar {
-  width: 4px;
+  width: 6px;
 }
 
 .battle-log-content::-webkit-scrollbar-track {
@@ -91,17 +95,24 @@ onMounted(() => {
 
 .battle-log-content::-webkit-scrollbar-thumb {
   background-color: rgba(255, 255, 255, 0.3);
-  border-radius: 2px;
+  border-radius: 3px;
 }
 
 .message {
   padding: 4px 8px;
-  margin: 2px 0;
+  margin: 4px 0;
   border-radius: 4px;
-  line-height: 1.3;
+  line-height: 1.4;
   animation: fadeIn 0.3s ease-in;
   white-space: pre-wrap;
   word-break: break-all;
+}
+
+.no-logs {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.5);
+  padding: 20px;
+  font-style: italic;
 }
 
 @keyframes fadeIn {
@@ -111,17 +122,23 @@ onMounted(() => {
 
 .message.info {
   background-color: rgba(0, 100, 255, 0.15);
+  border-left: 3px solid rgba(0, 100, 255, 0.5);
 }
 
 .message.damage {
   background-color: rgba(255, 50, 50, 0.15);
+  border-left: 3px solid rgba(255, 50, 50, 0.5);
+  font-weight: bold;
 }
 
 .message.heal {
   background-color: rgba(50, 255, 50, 0.15);
+  border-left: 3px solid rgba(50, 255, 50, 0.5);
 }
 
 .message.special {
   background-color: rgba(255, 255, 50, 0.15);
+  border-left: 3px solid rgba(255, 255, 50, 0.5);
+  font-weight: bold;
 }
 </style> 

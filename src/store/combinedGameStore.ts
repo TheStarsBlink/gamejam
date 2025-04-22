@@ -23,6 +23,7 @@ export interface Unit {
     cellIndex: number;
     image?: string;
     number?: number; // 数独格子的数字值
+    armor?: number;  // 添加护甲属性
 }
 
 // 棋盘格子类型
@@ -286,16 +287,18 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
         const row = Math.floor(cellIndex / 9);
         const col = cellIndex % 9;
         
+        // 创建玩家单位
         const unit: Unit = {
-            id: card.id + Date.now(),
+            id: `player_${Date.now()}_${cellIndex}`,
             name: card.name,
-            hp: card.hp ?? 1,
-            maxHp: card.hp ?? 1,
-            atk: card.atk ?? 1,
-            traits: [],
+            atk: card.atk || 1,
+            hp: card.hp || 1,
+            maxHp: card.hp || 1,
+            traits: [], // 默认为空数组
             cellIndex: cellIndex,
             image: card.image,
-            number: card.value || 0 
+            number: card.value || 0
+            // 不设置armor属性
         }
         
         // 添加到玩家单位
@@ -544,29 +547,27 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
                 // 获取该位置的数独数字
                 const cellValue = sudokuPuzzle.value[row][col];
                 
-                // 创建敌人单位，并将数独数字赋给敌人
-                const enemyUnit: Unit = {
+                // 创建敌人单位
+                enemyUnits.value.push({
                     id: enemyId,
                     name: enemyConfig.name,
-                    hp: enemyConfig.hp,
-                    maxHp: enemyConfig.hp,
-                    atk: enemyConfig.atk,
-                    traits: [],
+                    hp: enemyConfig.hp || 1,
+                    maxHp: enemyConfig.hp || 1,
+                    atk: enemyConfig.atk || 1,
+                    traits: [], // 敌人特性，默认为空
                     cellIndex: cellToUse.index,
                     image: enemyConfig.image || 'assets/enemy_default.svg',
                     number: cellValue || 0
-                };
-                
-                // 将敌人添加到敌人数组
-                enemyUnits.value.push(enemyUnit);
+                    // 不设置armor属性
+                });
                 
                 // 标记格子为已占用，并设置单位
                 grid.value[cellToUse.index].occupied = true;
-                grid.value[cellToUse.index].unit = enemyUnit;
+                grid.value[cellToUse.index].unit = enemyUnits.value[enemyCount];
                 
                 enemyCount++;
                 
-                console.log(`在格子 ${cellToUse.index} (行${row}列${col}) 放置敌人 ${enemyUnit.name}，格子数值: ${cellValue}`);
+                console.log(`在格子 ${cellToUse.index} (行${row}列${col}) 放置敌人 ${enemyUnits.value[enemyCount - 1].name}，格子数值: ${cellValue}`);
             } catch (error) {
                 console.error(`生成第${i+1}个敌人时出错:`, error);
             }
@@ -623,51 +624,108 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
     // 执行战斗
     function executeBattle() {
         // 添加战斗开始日志
-        addBattleLog('开始计算战斗结果...', 'info');
+        addBattleLog('战斗开始! 详细过程如下:', 'special');
         
-        // 遍历所有单位进行战斗
-        playerUnits.value.forEach(playerUnit => {
-            enemyUnits.value.forEach(enemyUnit => {
-                // 计算伤害
-                const damage = playerUnit.atk;
-                enemyUnit.hp -= damage;
-                
-                // 添加伤害日志
-                addBattleLog(`${playerUnit.name} 对 ${enemyUnit.name} 造成了 ${damage} 点伤害`, 'damage');
-                
-                // 如果单位死亡
-                if (enemyUnit.hp <= 0) {
-                    addBattleLog(`${enemyUnit.name} 被击败了！`, 'special');
-                    removeUnit(enemyUnit.id);
-                }
-            });
+        // 列出所有参战单位的初始状态
+        addBattleLog('我方单位:', 'info');
+        playerUnits.value.forEach(unit => {
+            addBattleLog(`${unit.name}: 攻击力(${unit.atk}), 生命值(${unit.hp}/${unit.maxHp})`, 'info');
         });
         
-        // 敌方单位反击
-        enemyUnits.value.forEach(enemyUnit => {
-            playerUnits.value.forEach(playerUnit => {
-                const damage = enemyUnit.atk;
-                playerUnit.hp -= damage;
-                
-                addBattleLog(`${enemyUnit.name} 对 ${playerUnit.name} 造成了 ${damage} 点伤害`, 'damage');
-                
-                if (playerUnit.hp <= 0) {
-                    addBattleLog(`${playerUnit.name} 被击败了！`, 'special');
-                    removeUnit(playerUnit.id);
-                }
-            });
+        addBattleLog('敌方单位:', 'info');
+        enemyUnits.value.forEach(unit => {
+            addBattleLog(`${unit.name}: 攻击力(${unit.atk}), 生命值(${unit.hp}/${unit.maxHp})`, 'info');
         });
+        
+        addBattleLog('--- 战斗开始 ---', 'special');
+        
+        // 创建战斗单位顺序列表 (简单地将双方单位合并后打乱顺序模拟回合制战斗)
+        const allUnits = [...playerUnits.value, ...enemyUnits.value].sort(() => Math.random() - 0.5);
+        
+        // 每个单位行动一次
+        for (let i = 0; i < allUnits.length; i++) {
+            const attacker = allUnits[i];
+            
+            // 跳过已经死亡的单位
+            if (attacker.hp <= 0) continue;
+            
+            // 确定攻击目标
+            let targets = attacker.id.startsWith('player') ? 
+                enemyUnits.value.filter(unit => unit.hp > 0) : 
+                playerUnits.value.filter(unit => unit.hp > 0);
+            
+            // 如果没有目标则跳过
+            if (targets.length === 0) {
+                addBattleLog(`${attacker.name}(攻击力${attacker.atk}, 生命值${attacker.hp}) 没有找到目标`, 'info');
+                continue;
+            }
+            
+            // 随机选择一个目标
+            const target = targets[Math.floor(Math.random() * targets.length)];
+            
+            // 计算基础伤害
+            const baseAttack = attacker.atk;
+            
+            // 计算实际伤害（考虑护甲等因素）
+            let actualDamage = baseAttack;
+            
+            // 如果目标有护甲属性
+            if (target.armor && target.armor > 0) {
+                const absorbedDamage = Math.min(target.armor, actualDamage);
+                actualDamage -= absorbedDamage;
+                // 如果需要消耗护甲，可以在这里更新
+                // target.armor -= absorbedDamage;
+            }
+            
+            // 记录攻击前的状态
+            const originalHp = target.hp;
+            
+            // 应用伤害
+            target.hp -= actualDamage;
+            
+            // 确保生命值不低于0
+            if (target.hp < 0) target.hp = 0;
+            
+            // 记录攻击过程
+            addBattleLog(
+                `${attacker.name}(攻击力${attacker.atk}, 生命值${attacker.hp}) 攻击 ${target.name}, 造成${actualDamage}点伤害, ${target.name}生命值从${originalHp}降至${target.hp}`, 
+                'damage'
+            );
+            
+            // 检查目标是否死亡
+            if (target.hp <= 0) {
+                addBattleLog(`${target.name} 被击败！`, 'special');
+                removeUnit(target.id);
+            }
+        }
+        
+        addBattleLog('--- 战斗结束 ---', 'special');
         
         // 检查战斗结果
         if (enemyUnits.value.length === 0) {
-            addBattleLog('战斗胜利！', 'special');
+            addBattleLog('战斗胜利！所有敌人已被击败', 'special');
             handleVictory();
         } else if (playerUnits.value.length === 0) {
-            addBattleLog('战斗失败！', 'special');
+            addBattleLog('战斗失败！所有玩家单位已被击败', 'special');
             handleDefeat();
         } else {
             // 如果双方都有存活单位，则显示战斗未结束
-            addBattleLog('战斗结束，但双方都有存活单位。', 'info');
+            addBattleLog('战斗结束，战场上仍有存活单位:', 'info');
+            
+            // 列出所有存活单位的状态
+            if (playerUnits.value.length > 0) {
+                addBattleLog('我方存活单位:', 'info');
+                playerUnits.value.forEach(unit => {
+                    addBattleLog(`${unit.name}: 生命值(${unit.hp}/${unit.maxHp})`, 'info');
+                });
+            }
+            
+            if (enemyUnits.value.length > 0) {
+                addBattleLog('敌方存活单位:', 'info');
+                enemyUnits.value.forEach(unit => {
+                    addBattleLog(`${unit.name}: 生命值(${unit.hp}/${unit.maxHp})`, 'info');
+                });
+            }
         }
     }
     

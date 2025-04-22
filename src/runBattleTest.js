@@ -113,14 +113,24 @@ class BattleManager {
     
     this.addBattleLog(`${attackerType}单位 ${attacker.name} 攻击 ${targetType}单位 ${target.name}`);
     
-    const damage = attacker.attack;
+    const baseAttack = attacker.attack;
     const originalHp = target.hp;
     
-    target.hp -= damage;
+    // 计算实际伤害（考虑防御等因素）
+    let actualDamage = baseAttack;
+    
+    // 应用护甲/防御减伤（如果有）
+    if (target.defense !== undefined && target.defense > 0) {
+      const absorbedDamage = Math.min(target.defense, actualDamage);
+      actualDamage -= absorbedDamage;
+    }
+    
+    // 应用伤害
+    target.hp -= actualDamage;
     
     if (target.hp < 0) target.hp = 0;
     
-    this.addBattleLog(`${attacker.name} 造成 ${damage} 点伤害，${target.name} 生命值从 ${originalHp} 降至 ${target.hp}`);
+    this.addBattleLog(`${attacker.name} 造成 ${actualDamage} 点伤害，${target.name} 生命值从 ${originalHp} 降至 ${target.hp}`);
     
     if (target.hp <= 0) {
       this.addBattleLog(`${target.name} 被击败！`);
