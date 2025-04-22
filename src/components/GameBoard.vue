@@ -8,15 +8,15 @@
       </div>
       <div class="region-content">
         <div v-if="selectedRegion !== null" class="region-info">
-          当前选中: 第 {{ selectedRegion + 1 }} 区域
+          当前选中: 第 {{ selectedRegion }} 区域
         </div>
         <div class="region-grid">
           <div 
             v-for="i in 9" 
             :key="i-1"
             class="region-cell" 
-            :class="{ 'active': selectedRegion === i-1 }"
-            @click="handleRegionSelect(i-1)"
+            :class="{ 'active': selectedRegion === i }"
+            @click="handleRegionSelect(i)"
           >
             {{ i }}
           </div>
@@ -185,7 +185,7 @@ const gameStore = useGameStore();
 const selectedUnit = ref<Unit | null>(null);
 const showDebugInfo = ref(true); // 显示调试信息
 const showRegionInfo = ref(true); // 显示区域信息
-const selectedRegion = ref<number | null>(null); // 选中的3x3区域索引（0-8）
+const selectedRegion = ref<number | null>(null); // 选中的3x3区域索引（1-9）
 const battleResult = ref<string | null>(null); // 战斗结果提示
 const isBattling = ref(false); // 战斗状态
 
@@ -263,14 +263,14 @@ function isSelectable(cell: Cell): boolean {
 
 // 处理区域选择
 function handleRegionSelect(regionIndex: number) {
-  if (regionIndex >= 0 && regionIndex <= 8) {
+  if (regionIndex >= 1 && regionIndex <= 9) {
     selectedRegion.value = regionIndex;
-    console.log("选择了区域:", regionIndex + 1);
+    console.log("选择了区域:", regionIndex);
     
     // 检查并输出该区域的敌人和我方单位数量
     const enemyCount = countEnemiesInRegion(regionIndex);
     const playerCount = countPlayerUnitsInRegion(regionIndex);
-    console.log(`区域${regionIndex + 1}中敌人数量: ${enemyCount}, 我方单位数量: ${playerCount}`);
+    console.log(`区域${regionIndex}中敌人数量: ${enemyCount}, 我方单位数量: ${playerCount}`);
     
     // 清除上一次的战斗结果
     battleResult.value = null;
@@ -281,13 +281,13 @@ function handleRegionSelect(regionIndex: number) {
 function handleCellClick(cell: Cell) {
   // 更新选中的区域
   const region = calculateRegion(cell.index);
-  console.log("点击格子:", cell.index, "所在区域:", region + 1);
+  console.log("点击格子:", cell.index, "所在区域:", region);
   selectedRegion.value = region;
   
   // 检查并输出该区域的敌人和我方单位数量
   const enemyCount = countEnemiesInRegion(region);
   const playerCount = countPlayerUnitsInRegion(region);
-  console.log(`区域${region + 1}中敌人数量: ${enemyCount}, 我方单位数量: ${playerCount}`);
+  console.log(`区域${region}中敌人数量: ${enemyCount}, 我方单位数量: ${playerCount}`);
   
   // 清除上一次的战斗结果
   battleResult.value = null;
@@ -346,21 +346,19 @@ function calculateRegion(cellIndex: number): number {
   const row = Math.floor(cellIndex / 9);
   const col = cellIndex % 9;
   
-  // 计算所在区域
-  // 区域索引从0开始：0,1,2在第一行，3,4,5在第二行，6,7,8在第三行
-  const regionRow = Math.floor(row / 3); // 0-2
-  const regionCol = Math.floor(col / 3); // 0-2
+  // 将9x9网格分为3x3的区域
+  // 区域编号对应界面显示：
+  // 1 2 3
+  // 4 5 6
+  // 7 8 9
+  const regionRow = Math.floor(row / 3);
+  const regionCol = Math.floor(col / 3);
   
-  // 计算区域索引
-  const regionIndex = regionRow * 3 + regionCol; // 0-8
+  // 计算区域索引 (1-9)
+  const region = regionRow * 3 + regionCol + 1;
   
-  // 确保区域索引在有效范围内 (0-8)
-  if (regionIndex < 0 || regionIndex > 8) {
-    console.error("计算出的区域索引无效:", regionIndex, "原始格子索引:", cellIndex);
-    return 0; // 返回一个默认值
-  }
-  
-  return regionIndex;
+  console.log(`格子 ${cellIndex} (行${row},列${col}) 属于区域 ${region}`);
+  return region;
 }
 
 // 计算区域统计信息
@@ -369,8 +367,10 @@ function countEnemiesInRegion(regionIndex: number): number {
   
   // 获取区域内的所有格子索引
   const cellIndices: number[] = [];
-  const startRow = Math.floor(regionIndex / 3) * 3;
-  const startCol = (regionIndex % 3) * 3;
+  // 将区域编号转换为0-8范围
+  const region = regionIndex - 1;
+  const startRow = Math.floor(region / 3) * 3;
+  const startCol = (region % 3) * 3;
   
   for (let r = 0; r < 3; r++) {
     for (let c = 0; c < 3; c++) {
@@ -391,12 +391,14 @@ function countEnemiesInRegion(regionIndex: number): number {
 function countPlayerUnitsInRegion(regionIndex: number): number {
   if (regionIndex === null) return 0;
   
-  console.log("检查区域" + (regionIndex + 1) + "内的我方单位");
+  console.log("检查区域" + regionIndex + "内的我方单位");
   
   // 获取区域内的所有格子索引
   const cellIndices: number[] = [];
-  const startRow = Math.floor(regionIndex / 3) * 3;
-  const startCol = (regionIndex % 3) * 3;
+  // 将区域编号转换为0-8范围
+  const region = regionIndex - 1;
+  const startRow = Math.floor(region / 3) * 3;
+  const startCol = (region % 3) * 3;
   
   for (let r = 0; r < 3; r++) {
     for (let c = 0; c < 3; c++) {
@@ -410,8 +412,8 @@ function countPlayerUnitsInRegion(regionIndex: number): number {
     .filter((c: Cell) => cellIndices.includes(c.index) && c.unit && isPlayerUnit(c.unit))
     .length;
   
-  console.log("区域" + (regionIndex + 1) + "内我方单位数量:", playerUnitsCount);
-  console.log("区域" + (regionIndex + 1) + "包含格子:", cellIndices.join(", "));
+  console.log("区域" + regionIndex + "内我方单位数量:", playerUnitsCount);
+  console.log("区域" + regionIndex + "包含格子:", cellIndices.join(", "));
   
   return playerUnitsCount;
 }
@@ -419,9 +421,10 @@ function countPlayerUnitsInRegion(regionIndex: number): number {
 function getRegionPosition(regionIndex: number): string {
   if (regionIndex === null) return '';
   
-  // 计算区域的行列位置
-  const regionRow = Math.floor(regionIndex / 3) + 1; // 1-3行
-  const regionCol = (regionIndex % 3) + 1; // 1-3列
+  // 将区域编号转换为0-8范围后计算行列位置
+  const region = regionIndex - 1;
+  const regionRow = Math.floor(region / 3) + 1; // 1-3行
+  const regionCol = (region % 3) + 1; // 1-3列
   
   return `${regionRow}行${regionCol}列`;
 }
@@ -436,10 +439,10 @@ function calculateRegionSum(regionIndex: number): number {
 function startRegionBattle(regionIndex: number) {
   if (isBattling.value) return;
   
-  console.log("尝试开始区域战斗:", regionIndex + 1);
+  console.log("尝试开始区域战斗:", regionIndex);
   
   // 验证区域索引是否有效
-  if (regionIndex < 0 || regionIndex > 8) {
+  if (regionIndex < 1 || regionIndex > 9) {
     console.error("无效的区域索引:", regionIndex);
     battleResult.value = "无效的区域";
     return;
@@ -450,8 +453,8 @@ function startRegionBattle(regionIndex: number) {
   
   // 获取区域内的所有格子索引
   const cellIndices: number[] = [];
-  const startRow = Math.floor(regionIndex / 3) * 3;
-  const startCol = (regionIndex % 3) * 3;
+  const startRow = Math.floor((regionIndex - 1) / 3) * 3;
+  const startCol = ((regionIndex - 1) % 3) * 3;
   
   for (let r = 0; r < 3; r++) {
     for (let c = 0; c < 3; c++) {
@@ -460,7 +463,7 @@ function startRegionBattle(regionIndex: number) {
     }
   }
   
-  console.log("区域" + (regionIndex + 1) + "包含格子:", cellIndices.join(", "));
+  console.log("区域" + regionIndex + "包含格子:", cellIndices.join(", "));
   
   // 获取区域内的所有单位
   const regionCells = gameStore.grid.filter((c: Cell) => cellIndices.includes(c.index));
@@ -495,11 +498,11 @@ function startRegionBattle(regionIndex: number) {
   const enemyPower = enemyUnits.reduce((total: number, unit: Unit) => total + unit.atk + unit.hp, 0);
   const playerPower = playerUnitsInRegion.reduce((total: number, unit: Unit) => total + unit.atk + unit.hp, 0);
   
-  console.log("战斗开始:", regionIndex + 1);
+  console.log("战斗开始:", regionIndex);
   console.log("敌人战斗力:", enemyPower, "玩家战斗力:", playerPower);
   
   // 添加战斗开始的日志
-  gameStore.addBattleLog(`区域${regionIndex + 1}战斗开始！`, 'special');
+  gameStore.addBattleLog(`区域${regionIndex}战斗开始！`, 'special');
   
   // 记录参战单位
   gameStore.addBattleLog(`敌方单位: ${enemyUnits.map((u: Unit) => u.name).join('、')}`, 'info');
@@ -652,7 +655,7 @@ function startRegionBattle(regionIndex: number) {
     }
     
     // 记录战斗结束
-    gameStore.addBattleLog(`区域${regionIndex + 1}战斗结束！`, 'special');
+    gameStore.addBattleLog(`区域${regionIndex}战斗结束！`, 'special');
     
     isBattling.value = false;
   }, 1000); // 1秒后显示结果

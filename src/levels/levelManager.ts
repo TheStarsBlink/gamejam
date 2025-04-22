@@ -127,55 +127,174 @@ export function getLevel(levelId: number): LevelConfig | undefined {
  * @returns 生成的敌方单位列表
  */
 export function generateEnemiesForLevel(levelId: number, grid: Cell[]): Unit[] {
-  const level = getLevel(levelId);
+    const level = getLevel(levelId);
     if (!level) {
         console.error(`无法找到关卡配置: ${levelId}`);
         return [];
     }
 
     const enemyUnits: Unit[] = [];
-    const availableCells = grid.filter(cell => !cell.occupied && cell.value === 0); // 只在空地生成敌人
+    const neutralUnits: Unit[] = [];
+    
+    // 初始化区域状态，注意区域索引从0开始存储
+    const regions = Array(9).fill(null).map(() => ({
+        enemies: [] as Unit[],
+        neutrals: [] as Unit[],
+        usedCells: new Set<number>()
+    }));
 
-    level.enemies.forEach((enemyConfig, index) => {
-        let cellIndex = -1;
+    // 计算格子所属的区域（返回1-9）
+    function calculateRegion(cellIndex: number): number {
+        const row = Math.floor(cellIndex / 9);
+        const col = cellIndex % 9;
+        
+        const regionRow = Math.floor(row / 3);
+        const regionCol = Math.floor(col / 3);
+        const region = regionRow * 3 + regionCol + 1;
+        
+        console.log(`格子 ${cellIndex} (行${row},列${col}) 属于区域 ${region}`);
+        return region;
+    }
 
-        if (enemyConfig.position !== undefined && !grid[enemyConfig.position].occupied) {
-            // 如果指定了位置且未被占用
-            cellIndex = enemyConfig.position;
-    } else {
-            // 否则，随机选择一个可用的空格子
-            if (availableCells.length > 0) {
-                const randomIndex = Math.floor(Math.random() * availableCells.length);
-                cellIndex = availableCells[randomIndex].index;
-                availableCells.splice(randomIndex, 1); // 移除已选格子，防止重复
-    } else {
-                console.warn(`关卡 ${levelId}: 没有足够的空地生成敌人 ${enemyConfig.name}`);
-                return; // 跳过这个敌人
+    // 获取区域内的所有格子
+    function getCellsInRegion(region: number): number[] {
+        const cells: number[] = [];
+        const regionRow = Math.floor((region - 1) / 3);
+        const regionCol = (region - 1) % 3;
+        
+        const startRow = regionRow * 3;
+        const startCol = regionCol * 3;
+        
+        for (let r = 0; r < 3; r++) {
+            for (let c = 0; c < 3; c++) {
+                const row = startRow + r;
+                const col = startCol + c;
+                const index = row * 9 + col;
+                cells.push(index);
             }
         }
+        
+        return cells;
+    }
 
-        if (cellIndex !== -1) {
+    // 检查格子是否可用
+    function isCellAvailable(cellIndex: number, region: number): boolean {
+        if (cellIndex < 0 || cellIndex >= grid.length) return false;
+        const cell = grid[cellIndex];
+        if (!cell) return false;
+        
+        // 检查格子是否已被占用
+        const isAvailable = !cell.occupied && 
+                          !regions[region - 1].usedCells.has(cellIndex) && 
+                          cell.value > 0;
+        
+        if (!isAvailable) {
+            console.log(`格子 ${cellIndex} 不可用: ${cell.occupied ? '已占用' : ''}${regions[region - 1].usedCells.has(cellIndex) ? '已在本轮使用' : ''}${cell.value <= 0 ? '无数值' : ''}`);
+        }
+        
+        return isAvailable;
+    }
+
+    // 处理每个区域
+    for (let region = 1; region <= 9; region++) {
+        console.log(`\n开始处理区域 ${region}`);
+        
+        // 获取区域内所有可用格子
+        const regionCells = getCellsInRegion(region);
+        const availableCells = regionCells.filter(cellIndex => isCellAvailable(cellIndex, region));
+        
+        if (availableCells.length === 0) {
+            console.log(`区域 ${region} 没有可用格子，跳过`);
+            continue;
+        }
+
+        // 随机打乱可用格子
+        const shuffledCells = [...availableCells].sort(() => Math.random() - 0.5);
+
+        // 确保每个区域有2-4个敌人
+        const minEnemies = 2;
+        const maxEnemies = Math.min(4, shuffledCells.length);
+        const enemyCount = Math.min(maxEnemies, Math.max(minEnemies, Math.floor(Math.random() * 3) + 2));
+        
+        console.log(`区域 ${region} 计划生成 ${enemyCount} 个敌人（最小${minEnemies}，最大${maxEnemies}）`);
+
+        // 生成敌人
+        for (let i = 0; i < enemyCount && i < shuffledCells.length; i++) {
+            const cellIndex = shuffledCells[i];
+            if (cellIndex === undefined) break;
+
+            // 检查区域内的敌人数量是否已达到上限
+            if (regions[region - 1].enemies.length >= 4) {
+                console.log(`区域 ${region} 敌人数量已达到上限 4，停止生成`);
+                break;
+            }
+
+            const enemyConfig = level.enemies[Math.floor(Math.random() * level.enemies.length)];
             const enemyUnit: Unit = {
-                id: `enemy_${levelId}_${index}_${Date.now()}`,
+                id: `enemy_${levelId}_${region}_${i}_${Date.now()}`,
                 name: enemyConfig.name,
                 hp: enemyConfig.hp,
                 maxHp: enemyConfig.hp,
                 atk: enemyConfig.atk,
                 traits: [],
-          cellIndex: cellIndex,
+                cellIndex: cellIndex,
                 image: enemyConfig.image
-        };
+            };
+
             enemyUnits.push(enemyUnit);
-        
-            // 更新格子占用状态
-        grid[cellIndex].occupied = true;
+            regions[region - 1].enemies.push(enemyUnit);
+            regions[region - 1].usedCells.add(cellIndex);
+            grid[cellIndex].occupied = true;
             grid[cellIndex].unit = enemyUnit;
-      } else {
-             console.warn(`关卡 ${levelId}: 无法为敌人 ${enemyConfig.name} 找到位置`);
+
+            console.log(`在区域 ${region} 格子 ${cellIndex} 生成敌人: ${enemyUnit.name}`);
         }
+
+        // 剩余的格子用于生成中立单位（0-2个）
+        const remainingCells = shuffledCells.filter(cell => !regions[region - 1].usedCells.has(cell));
+        
+        if (remainingCells.length > 0) {
+            const maxNeutrals = Math.min(2, remainingCells.length);
+            const neutralCount = Math.floor(Math.random() * (maxNeutrals + 1)); // 0 到 maxNeutrals 之间
+            
+            console.log(`区域 ${region} 计划生成 ${neutralCount} 个中立单位（最大${maxNeutrals}）`);
+
+            for (let i = 0; i < neutralCount; i++) {
+                const cellIndex = remainingCells[i];
+                if (cellIndex === undefined) break;
+
+                const neutralUnit: Unit = {
+                    id: `neutral_${levelId}_${region}_${i}_${Date.now()}`,
+                    name: "中立单位",
+                    hp: 5,
+                    maxHp: 5,
+                    atk: 2,
+                    traits: [],
+                    cellIndex: cellIndex,
+                    image: 'assets/neutral.png'
+                };
+
+                neutralUnits.push(neutralUnit);
+                regions[region - 1].neutrals.push(neutralUnit);
+                regions[region - 1].usedCells.add(cellIndex);
+                grid[cellIndex].occupied = true;
+                grid[cellIndex].unit = neutralUnit;
+
+                console.log(`在区域 ${region} 格子 ${cellIndex} 生成中立单位`);
+            }
+        }
+    }
+
+    // 打印最终状态
+    console.log('\n=== 生成完成，最终状态 ===');
+    regions.forEach((region, index) => {
+        console.log(`区域 ${index + 1}:`);
+        console.log(`  敌人 (${region.enemies.length}): ${region.enemies.map(e => e.name).join(', ')}`);
+        console.log(`  中立 (${region.neutrals.length}): ${region.neutrals.map(n => n.name).join(', ')}`);
+        console.log(`  使用的格子: ${[...region.usedCells].join(', ')}`);
     });
 
-    return enemyUnits;
+    return [...enemyUnits, ...neutralUnits];
 }
 
 /**
