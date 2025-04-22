@@ -1195,6 +1195,15 @@ export class BattleScene extends Phaser.Scene {
             cell.occupiedBy = undefined;
         }
         
+        // 从对应的单位数组中移除
+        if (unit.faction === Faction.PLAYER) {
+            this.playerUnits = this.playerUnits.filter(u => u.id !== unit.id);
+        } else if (unit.faction === Faction.ENEMY) {
+            this.enemyUnits = this.enemyUnits.filter(u => u.id !== unit.id);
+        } else if (unit.faction === Faction.VILLAGER) {
+            this.villagerUnits = this.villagerUnits.filter(u => u.id !== unit.id);
+        }
+        
         // 显示消息
         this.showMessage(`${unit.name} 被消灭了！`);
         

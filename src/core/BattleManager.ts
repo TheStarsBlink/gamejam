@@ -19,6 +19,7 @@ export interface BattleUnit {
   maxHp: number;       // 最大生命值
   attack: number;      // 攻击力
   isPlayerUnit: boolean; // 是否是玩家单位（用于区分敌我）
+  isAlive: boolean;    // 是否存活
   // 可以根据需要添加更多属性，如技能、防御力等
 }
 
@@ -80,33 +81,33 @@ export class BattleManager {
       case 1:
         // 第一关：3个弱小敌人
         this._enemyUnits.push(
-          { id: 'enemy1', name: '小怪1', number: 2, hp: 3, maxHp: 3, attack: 1, isPlayerUnit: false },
-          { id: 'enemy2', name: '小怪2', number: 5, hp: 4, maxHp: 4, attack: 1, isPlayerUnit: false },
-          { id: 'enemy3', name: '小怪3', number: 8, hp: 3, maxHp: 3, attack: 2, isPlayerUnit: false }
+          { id: 'enemy1', name: '小怪1', number: 2, hp: 3, maxHp: 3, attack: 1, isPlayerUnit: false, isAlive: true },
+          { id: 'enemy2', name: '小怪2', number: 5, hp: 4, maxHp: 4, attack: 1, isPlayerUnit: false, isAlive: true },
+          { id: 'enemy3', name: '小怪3', number: 8, hp: 3, maxHp: 3, attack: 2, isPlayerUnit: false, isAlive: true }
         );
         break;
       case 2:
         // 第二关：4个中等强度敌人
         this._enemyUnits.push(
-          { id: 'enemy1', name: '中等怪物1', number: 1, hp: 5, maxHp: 5, attack: 2, isPlayerUnit: false },
-          { id: 'enemy2', name: '中等怪物2', number: 3, hp: 4, maxHp: 4, attack: 3, isPlayerUnit: false },
-          { id: 'enemy3', name: '中等怪物3', number: 6, hp: 6, maxHp: 6, attack: 2, isPlayerUnit: false },
-          { id: 'enemy4', name: '中等怪物4', number: 9, hp: 5, maxHp: 5, attack: 3, isPlayerUnit: false }
+          { id: 'enemy1', name: '中等怪物1', number: 1, hp: 5, maxHp: 5, attack: 2, isPlayerUnit: false, isAlive: true },
+          { id: 'enemy2', name: '中等怪物2', number: 3, hp: 4, maxHp: 4, attack: 3, isPlayerUnit: false, isAlive: true },
+          { id: 'enemy3', name: '中等怪物3', number: 6, hp: 6, maxHp: 6, attack: 2, isPlayerUnit: false, isAlive: true },
+          { id: 'enemy4', name: '中等怪物4', number: 9, hp: 5, maxHp: 5, attack: 3, isPlayerUnit: false, isAlive: true }
         );
         break;
       case 3:
         // 第三关：boss和小怪
         this._enemyUnits.push(
-          { id: 'minion1', name: '精英怪1', number: 2, hp: 6, maxHp: 6, attack: 3, isPlayerUnit: false },
-          { id: 'boss', name: 'Boss', number: 5, hp: 12, maxHp: 12, attack: 4, isPlayerUnit: false },
-          { id: 'minion2', name: '精英怪2', number: 8, hp: 6, maxHp: 6, attack: 3, isPlayerUnit: false }
+          { id: 'minion1', name: '精英怪1', number: 2, hp: 6, maxHp: 6, attack: 3, isPlayerUnit: false, isAlive: true },
+          { id: 'boss', name: 'Boss', number: 5, hp: 12, maxHp: 12, attack: 4, isPlayerUnit: false, isAlive: true },
+          { id: 'minion2', name: '精英怪2', number: 8, hp: 6, maxHp: 6, attack: 3, isPlayerUnit: false, isAlive: true }
         );
         break;
       default:
         // 默认生成一些基础敌人
         this._enemyUnits.push(
-          { id: 'enemy1', name: '敌人1', number: 3, hp: 4, maxHp: 4, attack: 2, isPlayerUnit: false },
-          { id: 'enemy2', name: '敌人2', number: 6, hp: 4, maxHp: 4, attack: 2, isPlayerUnit: false }
+          { id: 'enemy1', name: '敌人1', number: 3, hp: 4, maxHp: 4, attack: 2, isPlayerUnit: false, isAlive: true },
+          { id: 'enemy2', name: '敌人2', number: 6, hp: 4, maxHp: 4, attack: 2, isPlayerUnit: false, isAlive: true }
         );
     }
     
@@ -262,27 +263,26 @@ export class BattleManager {
     // 应用伤害
     target.hp -= actualDamage;
     
-    // 确保生命值不会低于0
-    if (target.hp < 0) target.hp = 0;
-    
-    // 记录攻击结果，使用实际伤害值
-    this.addBattleLog(`${attacker.name} 造成 ${actualDamage} 点伤害，${target.name} 生命值从 ${originalHp} 降至 ${target.hp}`);
+    // 确保生命值不会低于0，并设置死亡状态
+    if (target.hp <= 0) {
+        target.hp = 0;
+        target.isAlive = false;
+        this.addBattleLog(`${target.name} 被击败！`);
+        
+        // 触发单位死亡事件
+        this._eventSystem.emit('unit_death', target);
+    } else {
+        // 记录攻击结果，使用实际伤害值
+        this.addBattleLog(`${attacker.name} 造成 ${actualDamage} 点伤害，${target.name} 生命值从 ${originalHp} 降至 ${target.hp}`);
+    }
     
     // 触发攻击事件
     this._eventSystem.emit('unit_attack', {
-      attacker, 
-      target, 
-      damage: actualDamage,
-      targetRemainHp: target.hp
+        attacker, 
+        target, 
+        damage: actualDamage,
+        targetRemainHp: target.hp
     });
-    
-    // 检查目标是否死亡
-    if (target.hp <= 0) {
-      this.addBattleLog(`${target.name} 被击败！`);
-      
-      // 触发单位死亡事件
-      this._eventSystem.emit('unit_death', target);
-    }
   }
   
   /**
