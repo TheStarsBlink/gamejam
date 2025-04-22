@@ -9,6 +9,7 @@ import { createInitialGrid, updateGridBonuses } from '../utils/GridUtils';
 import { createEnemy, normalBattleWaves, bossBattleWaves } from '../objects/Enemies';
 import { createUnitFromCard, drawCards, getMinionCards, shuffleDeck } from '../utils/CardUtils';
 import { handleAttack, processStatusEffects, selectTarget } from '../utils/CombatUtils';
+import { GameRules } from '../utils/GameRules';
 
 export class BattleScene extends Phaser.Scene {
     // 游戏状态
@@ -1209,6 +1210,11 @@ export class BattleScene extends Phaser.Scene {
         if (allEnemiesDead) {
             this.handleVictory();
         } else {
+            // 将弃牌堆洗入牌库
+            this.deck = GameRules.shuffleArray([...this.discardPile]);
+            this.discardPile = [];
+            this.updateCardCountTexts();
+            
             // 开始下一回合
             this.currentTurn++;
             this.turnText.setText(`回合: ${this.currentTurn}`);
@@ -1220,6 +1226,11 @@ export class BattleScene extends Phaser.Scene {
     private handleVictory(): void {
         this.gameState = GameState.VICTORY;
         this.stateText.setText('阶段: 胜利');
+        
+        // 将弃牌堆洗入牌库
+        this.deck = GameRules.shuffleArray([...this.discardPile]);
+        this.discardPile = [];
+        this.updateCardCountTexts();
         
         // 显示胜利文本
         const victoryText = this.add.text(
@@ -1273,6 +1284,11 @@ export class BattleScene extends Phaser.Scene {
     private handlePlayerDefeat(): void {
         this.gameState = GameState.DEFEAT;
         this.stateText.setText('阶段: 失败');
+        
+        // 将弃牌堆洗入牌库
+        this.deck = GameRules.shuffleArray([...this.discardPile]);
+        this.discardPile = [];
+        this.updateCardCountTexts();
         
         // 显示失败文本
         const defeatText = this.add.text(

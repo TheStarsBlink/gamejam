@@ -8,13 +8,13 @@
     <div class="battle-logs-content" v-if="isVisible">
       <div class="logs-list" ref="logsContainer">
         <div 
-          v-for="(log, index) in battleLogs" 
+          v-for="(log, index) in gameStore.battleLogHistory" 
           :key="index" 
           :class="['log-entry', log.type]"
         >
           {{ log.text }}
         </div>
-        <div v-if="battleLogs.length === 0" class="empty-logs">
+        <div v-if="gameStore.battleLogHistory.length === 0" class="empty-logs">
           暂无战斗日志
         </div>
       </div>
@@ -28,34 +28,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
-import { useGameStore, BattleLogMessage } from '@/store/gameStore';
-
-interface BattleLog {
-  text: string;
-  type: 'info' | 'damage' | 'heal' | 'special';
-}
+import { ref, onMounted } from 'vue';
+import { useGameStore } from '@/store/gameStore';
 
 const gameStore = useGameStore();
-const battleLogs = ref<BattleLog[]>([]);
 const isVisible = ref(true);
 const logsContainer = ref<HTMLElement | null>(null);
 
-// 添加日志
-function addLog(text: string, type: BattleLog['type'] = 'info') {
-  console.log('addLog', text, type);
-  battleLogs.value.push({ text, type });
-  // 限制日志数量
-  if (battleLogs.value.length > 100) {
-    battleLogs.value.shift();
-  }
-  // 滚动到底部
-  scrollToBottom();
-}
-
 // 清空日志
 function clearLogs() {
-  battleLogs.value = [];
+  gameStore.battleLogHistory = [];
 }
 
 // 滚动到底部
@@ -67,30 +49,20 @@ function scrollToBottom() {
   }, 10);
 }
 
-// 监听gameStore中的战斗日志更新
-watch(() => gameStore.battleLog, (newLog: BattleLogMessage | null) => {
-  if (newLog) {
-    addLog(newLog.text, newLog.type);
-  }
-}, { deep: true });
-
-// 组件挂载时，初始化日志
+// 组件挂载时初始化
 onMounted(() => {
-  // 清空日志
-  clearLogs();
-  addLog('战斗日志组件已加载', 'info');
+  // 监听日志变化，自动滚动到底部
+  const observer = new MutationObserver(scrollToBottom);
   
-  // 从历史记录中恢复日志
-  if (gameStore.battleLogHistory.length > 0) {
-    gameStore.battleLogHistory.forEach(log => {
-      addLog(log.text, log.type);
+  if (logsContainer.value) {
+    observer.observe(logsContainer.value, {
+      childList: true,
+      subtree: true
     });
   }
-});
-
-// 导出方法，允许其他组件调用
-defineExpose({
-  addLog
+  
+  // 初始滚动到底部
+  scrollToBottom();
 });
 </script>
 
