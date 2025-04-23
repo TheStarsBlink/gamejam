@@ -28,12 +28,7 @@ body, html {
     overflow: hidden;
 }
 
-/* Phaser 游戏区域 */
-#phaser-game {
-    flex: 2;
-    background-color: var(--background-darker);
-    box-shadow: inset 0 0 30px rgba(0,0,0,0.5);
-}
+
 
 /* DOM UI 区域 */
 .ui-container {
