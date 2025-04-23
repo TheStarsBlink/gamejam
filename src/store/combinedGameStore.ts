@@ -20,6 +20,7 @@ export interface Unit {
     hp: number;
     maxHp: number;
     traits: string[];
+    traitNames?: { [key: string]: string }; // 特性的中文显示名称映射
     cellIndex: number;
     image?: string;
     number?: number; // 数独格子的数字值
@@ -307,11 +308,15 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
             atk: card.atk || 1,
             hp: card.hp || 1,
             maxHp: card.hp || 1,
-            traits: [], // 默认为空数组
+            traits: [],
+            traitNames: {
+                'row_buffed': '行数独加成',
+                'col_buffed': '列数独加成',
+                'region_buffed': '区域数独加成'
+            },
             cellIndex: cellIndex,
             image: card.image,
             number: card.value || 0
-            // 不设置armor属性
         }
         
         // 添加到玩家单位
@@ -323,9 +328,218 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
         
         console.log(`玩家在格子 ${cellIndex} (行${row}列${col}) 部署单位 ${unit.name}，单位自带数字: ${unit.number}`);
         
+        // 检查数独条件并应用buff
+        checkSudokuAndApplyBuffs();
+        
         if (grid.value[cellIndex].unit) {
-          saveGameState(); // 部署单位后保存
+            saveGameState(); // 部署单位后保存
         }
+    }
+    
+    // 检查数独条件并应用buff
+    function checkSudokuAndApplyBuffs() {
+        // 检查所有行
+        for (let row = 0; row < 9; row++) {
+            const rowUnits = getRowUnits(row);
+            if (isValidSudokuUnits(rowUnits)) {
+                applyBuffToRow(row);
+            }
+        }
+
+        // 检查所有列
+        for (let col = 0; col < 9; col++) {
+            const colUnits = getColUnits(col);
+            if (isValidSudokuUnits(colUnits)) {
+                applyBuffToCol(col);
+            }
+        }
+
+        // 检查所有3x3区域
+        for (let region = 0; region < 9; region++) {
+            const regionUnits = getRegionUnits(region);
+            if (isValidSudokuUnits(regionUnits)) {
+                applyBuffToRegion(region);
+            }
+        }
+    }
+
+    // 获取一行中的所有单位
+    function getRowUnits(row: number): Unit[] {
+        const units: Unit[] = [];
+        for (let col = 0; col < 9; col++) {
+            const cell = grid.value[row * 9 + col];
+            if (cell.unit && cell.unit.number && cell.unit.number > 0) {
+                units.push(cell.unit);
+            }
+        }
+        return units;
+    }
+
+    // 获取一列中的所有单位
+    function getColUnits(col: number): Unit[] {
+        const units: Unit[] = [];
+        for (let row = 0; row < 9; row++) {
+            const cell = grid.value[row * 9 + col];
+            if (cell.unit && cell.unit.number && cell.unit.number > 0) {
+                units.push(cell.unit);
+            }
+        }
+        return units;
+    }
+
+    // 获取一个3x3区域中的所有单位
+    function getRegionUnits(region: number): Unit[] {
+        const units: Unit[] = [];
+        const startRow = Math.floor(region / 3) * 3;
+        const startCol = (region % 3) * 3;
+
+        for (let i = 0; i < 3; i++) {
+            for (let j = 0; j < 3; j++) {
+                const cell = grid.value[(startRow + i) * 9 + (startCol + j)];
+                if (cell.unit && cell.unit.number && cell.unit.number > 0) {
+                    units.push(cell.unit);
+                }
+            }
+        }
+        return units;
+    }
+
+    // 检查一组单位是否满足数独条件（数字1-9不重复）
+    function isValidSudokuUnits(units: Unit[]): boolean {
+        // 获取所有单位的数字
+        const numbers = units.map(unit => unit.number || 0).filter(n => n > 0);
+        
+        // 检查是否有重复数字
+        const uniqueNumbers = new Set(numbers);
+        
+        // 检查数字是否在1-9范围内
+        const isValidRange = numbers.every(n => n !== undefined && n >= 1 && n <= 9);
+        
+        // 输出调试信息
+        console.log('检查单位数字:', numbers);
+        console.log('唯一数字数量:', uniqueNumbers.size);
+        console.log('数字范围有效:', isValidRange);
+        
+        // 返回true条件：
+        // 1. 必须有9个不同的数字（严格遵循数独规则）
+        // 2. 所有数字都在1-9范围内
+        // 3. 没有重复数字
+        const isValid = numbers.length === 9 && 
+                       uniqueNumbers.size === 9 && 
+                       isValidRange;
+
+        if (isValid) {
+            console.log('满足数独条件！数字:', numbers.sort((a, b) => a - b).join(', '));
+        } else {
+            console.log('不满足数独条件。原因:',
+                numbers.length !== 9 ? '数字不足9个' :
+                uniqueNumbers.size !== 9 ? '有重复数字' :
+                !isValidRange ? '数字超出范围' : '未知原因'
+            );
+        }
+        
+        return isValid;
+    }
+
+    // 为一行的单位添加buff
+    function applyBuffToRow(row: number) {
+        const units = getRowUnits(row);
+        const numbers = units
+            .map(u => u.number || 0)
+            .filter((n): n is number => n > 0)
+            .sort((a, b) => a - b)
+            .join(', ');
+        for (const unit of units) {
+            applyBuff(unit, 'row');
+        }
+        addBattleLog(`第${row + 1}行完成数独 [${numbers}]，单位获得行buff加成！`, 'special');
+    }
+
+    // 为一列的单位添加buff
+    function applyBuffToCol(col: number) {
+        const units = getColUnits(col);
+        const numbers = units
+            .map(u => u.number || 0)
+            .filter((n): n is number => n > 0)
+            .sort((a, b) => a - b)
+            .join(', ');
+        for (const unit of units) {
+            applyBuff(unit, 'col');
+        }
+        addBattleLog(`第${col + 1}列完成数独 [${numbers}]，单位获得列buff加成！`, 'special');
+    }
+
+    // 为3x3区域的单位添加buff
+    function applyBuffToRegion(region: number) {
+        const units = getRegionUnits(region);
+        const numbers = units
+            .map(u => u.number || 0)
+            .filter((n): n is number => n > 0)
+            .sort((a, b) => a - b)
+            .join(', ');
+        for (const unit of units) {
+            applyBuff(unit, 'region');
+        }
+        addBattleLog(`第${region + 1}个3x3区域完成数独 [${numbers}]，单位获得区域buff加成！`, 'special');
+    }
+
+    // 为单位添加buff
+    function applyBuff(unit: Unit, type: 'row' | 'col' | 'region') {
+        // 检查是否为玩家单位
+        if (!unit.id.startsWith('player_')) {
+            return; // 如果不是玩家单位，直接返回，不应用buff
+        }
+
+        // 统一的buff效果：+10生命值，+2护甲
+        unit.maxHp += 10;
+        unit.hp += 10;
+        
+        // 初始化护甲属性（如果不存在）
+        if (!unit.armor) {
+            unit.armor = 0;
+        }
+        unit.armor += 2;
+
+        // 确保生命值不超过最大生命值
+        if (unit.hp > unit.maxHp) {
+            unit.hp = unit.maxHp;
+        }
+
+        // 添加buff特效标记，使用中文描述
+        const buffName = type === 'row' ? '行数独加成' : 
+                        type === 'col' ? '列数独加成' : 
+                        '区域数独加成';
+        
+        const buffKey = `${type}_buffed`;
+        
+        // 初始化特性名称映射（如果不存在）
+        if (!unit.traitNames) {
+            unit.traitNames = {};
+        }
+        
+        // 添加特性和其中文名称
+        if (!unit.traits.includes(buffKey)) {
+            unit.traits.push(buffKey);
+            unit.traitNames[buffKey] = buffName;
+        }
+
+        showMessage(`${unit.name} 获得了${buffName}！生命值+10，护甲+2`);
+    }
+    
+    // 获取单位特性的显示名称
+    function getTraitDisplayName(unit: Unit, trait: string): string {
+        if (unit.traitNames && unit.traitNames[trait]) {
+            return unit.traitNames[trait];
+        }
+        
+        // 默认的特性名称映射
+        const defaultTraitNames: { [key: string]: string } = {
+            'row_buffed': '行数独加成',
+            'col_buffed': '列数独加成',
+            'region_buffed': '区域数独加成'
+        };
+        
+        return defaultTraitNames[trait] || trait;
     }
     
     // 使用法术
@@ -437,9 +651,14 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
             maxHp: 1,
             atk: 0,
             traits: [],
+            traitNames: {
+                'row_buffed': '行数独加成',
+                'col_buffed': '列数独加成',
+                'region_buffed': '区域数独加成'
+            },
             cellIndex: cellIndex,
-            image: 'assets/neutral.svg', // 可以添加一个中立单位的图片
-            number: cellValue || 0 // 将格子的数独数字赋给中立单位
+            image: 'assets/neutral.svg',
+            number: cellValue || 0
         };
         
         // 更新格子状态
@@ -567,6 +786,11 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
             maxHp: enemyConfig.hp || 1,
             atk: enemyConfig.atk || 1,
             traits: [],
+            traitNames: {
+                'row_buffed': '行数独加成',
+                'col_buffed': '列数独加成',
+                'region_buffed': '区域数独加成'
+            },
             cellIndex: cell.index,
             image: enemyConfig.image || 'assets/enemy_default.svg',
             number: cellValue || 0

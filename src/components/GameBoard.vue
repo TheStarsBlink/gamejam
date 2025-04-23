@@ -161,7 +161,7 @@
         </div>
         <div class="info-row">
           <span class="label">特性:</span>
-          <span class="traits">{{ selectedUnit.traits.join(', ') }}</span>
+          <span class="traits">{{ getTraitDisplayNames(selectedUnit) }}</span>
         </div>
         <div class="info-row" v-if="isEnemyUnit(selectedUnit)">
           <span class="label">类型:</span>
@@ -180,6 +180,7 @@
 import { ref, computed } from 'vue';
 import { useGameStore, Cell, Unit } from '../store/gameStore';
 import type { Card } from '../types/Card';
+import { useSudokuGameStore } from '../store/combinedGameStore'
 
 const gameStore = useGameStore();
 const selectedUnit = ref<Unit | null>(null);
@@ -659,6 +660,14 @@ function startRegionBattle(regionIndex: number) {
     
     isBattling.value = false;
   }, 1000); // 1秒后显示结果
+}
+
+// 获取特性的中文显示名称
+function getTraitDisplayNames(unit: Unit): string {
+  if (!unit || !unit.traits) return '';
+  return unit.traits
+    .map((trait: string) => unit.traitNames?.[trait] || trait)
+    .join(', ');
 }
 </script>
 
