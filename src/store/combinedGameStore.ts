@@ -265,6 +265,19 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
         // 加入弃牌堆
         discard.value.push(playedCard)
         
+        // 将剩余手牌放入弃牌堆
+        if (hand.value.length > 0) {
+            discard.value.push(...hand.value)
+            hand.value = []
+            showMessage('剩余手牌已放入弃牌堆')
+        }
+        
+        // 自动结束回合
+        if (phase.value === 'deployment') {
+            saveGameState() // 保存游戏状态
+            startNextTurn()
+        }
+        
         // 更新UI状态
         updateGameEngine()
     }
