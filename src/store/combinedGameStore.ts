@@ -311,7 +311,7 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
         console.log(`玩家在格子 ${cellIndex} (行${row}列${col}) 部署单位 ${unit.name}，单位自带数字: ${unit.number}`);
         
         if (grid.value[cellIndex].unit) {
-          saveGameState(); // 部署单位后保存状态
+          saveGameState(); // 部署单位后保存
         }
     }
     
@@ -459,13 +459,113 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
                 console.error('棋盘上没有可用格子！');
                 return;
             }
-            // 使用所有空格子
-            generateEnemiesOnCells(levelConfig, allEmptyCells);
+            // 使用所有空格子，但仍然应用区域限制
+            generateEnemiesWithRegionLimit(levelConfig, allEmptyCells);
             return;
         }
         
-        // 使用带数字的格子来生成敌人
-        generateEnemiesOnCells(levelConfig, availableCells);
+        // 使用带数字的格子来生成敌人，应用区域限制
+        generateEnemiesWithRegionLimit(levelConfig, availableCells);
+    }
+    
+    // 获取单元格所在的3x3区域索引（0-8）
+    function getRegionIndex(cellIndex: number): number {
+        const row = Math.floor(cellIndex / 9);
+        const col = cellIndex % 9;
+        return Math.floor(row / 3) * 3 + Math.floor(col / 3);
+    }
+
+    // 带区域限制的敌人生成
+    function generateEnemiesWithRegionLimit(levelConfig: LevelConfig, availableCells: Cell[]) {
+        if (!levelConfig || !levelConfig.enemies || levelConfig.enemies.length === 0) {
+            console.error('关卡配置错误或没有敌人配置');
+            return;
+        }
+
+        // 初始化9个区域的敌人计数
+        const regionCounts = new Array(9).fill(0);
+        
+        // 随机打乱可用格子
+        const shuffledCells = [...availableCells].sort(() => Math.random() - 0.5);
+        
+        // 创建敌人单位
+        let enemyCount = 0;
+        let enemyIndex = 0;
+
+        // 第一轮：确保每个区域至少有2个敌人（如果有足够的格子和敌人配置）
+        for (let region = 0; region < 9; region++) {
+            const regionCells = shuffledCells.filter(cell => getRegionIndex(cell.index) === region);
+            const minEnemies = Math.min(2, regionCells.length, levelConfig.enemies.length - enemyIndex);
+            
+            for (let i = 0; i < minEnemies; i++) {
+                if (enemyIndex >= levelConfig.enemies.length) break;
+                
+                const cell = regionCells[i];
+                if (!cell) continue;
+
+                createEnemyInCell(levelConfig.enemies[enemyIndex], cell);
+                regionCounts[region]++;
+                enemyCount++;
+                enemyIndex++;
+            }
+        }
+
+        // 第二轮：在允许的范围内（最多4个）添加剩余的敌人
+        while (enemyIndex < levelConfig.enemies.length) {
+            const remainingCells = shuffledCells.filter(cell => {
+                const region = getRegionIndex(cell.index);
+                return !cell.occupied && regionCounts[region] < 4;
+            });
+
+            if (remainingCells.length === 0) break;
+
+            const cell = remainingCells[0];
+            const region = getRegionIndex(cell.index);
+
+            createEnemyInCell(levelConfig.enemies[enemyIndex], cell);
+            regionCounts[region]++;
+            enemyCount++;
+            enemyIndex++;
+        }
+
+        console.log(`为关卡 ${currentLevel.value} (${levelConfig.name}) 实际生成了 ${enemyCount} 个敌人`);
+        console.log('各区域敌人数量:', regionCounts);
+        
+        // 显示关卡名称
+        showMessage(`第${currentLevel.value}关: ${levelConfig.name} - 敌人数量: ${enemyCount}`);
+    }
+
+    // 在指定格子创建敌人
+    function createEnemyInCell(enemyConfig: any, cell: Cell) {
+        const enemyId = `enemy_${currentLevel.value}_${enemyUnits.value.length}_${Date.now()}`;
+        
+        // 找到格子在数独中的行列位置
+        const row = Math.floor(cell.index / 9);
+        const col = cell.index % 9;
+        
+        // 获取该位置的数独数字
+        const cellValue = sudokuPuzzle.value[row][col];
+        
+        // 创建敌人单位
+        const enemy = {
+            id: enemyId,
+            name: enemyConfig.name,
+            hp: enemyConfig.hp || 1,
+            maxHp: enemyConfig.hp || 1,
+            atk: enemyConfig.atk || 1,
+            traits: [],
+            cellIndex: cell.index,
+            image: enemyConfig.image || 'assets/enemy_default.svg',
+            number: cellValue || 0
+        };
+        
+        enemyUnits.value.push(enemy);
+        
+        // 标记格子为已占用，并设置单位
+        grid.value[cell.index].occupied = true;
+        grid.value[cell.index].unit = enemy;
+        
+        console.log(`在格子 ${cell.index} (行${row}列${col}) 放置敌人 ${enemy.name}，格子数值: ${cellValue}`);
     }
     
     // 重置棋盘
@@ -499,85 +599,6 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
         const nonZeroCount = grid.value.filter(cell => cell.value > 0).length;
         const zeroCount = grid.value.filter(cell => cell.value === 0).length;
         console.log(`网格初始化完成：共${grid.value.length}格，${nonZeroCount}个数字格，${zeroCount}个空格`);
-    }
-    
-    // 辅助函数：在指定格子上生成敌人
-    function generateEnemiesOnCells(levelConfig: LevelConfig, availableCells: Cell[]) {
-        if (!levelConfig || !levelConfig.enemies || levelConfig.enemies.length === 0) {
-            console.error('关卡配置错误或没有敌人配置');
-            return;
-        }
-        
-        if (!availableCells || availableCells.length === 0) {
-            console.error('没有可用格子来放置敌人');
-            return;
-        }
-        
-        // 随机洗牌可用格子，确保敌人位置随机
-        const shuffledCells = [...availableCells].sort(() => Math.random() - 0.5);
-        
-        // 计算要生成的敌人数量，不能超过可用格子数
-        const enemiesToGenerate = Math.min(levelConfig.enemies.length, shuffledCells.length);
-        
-        // 确认生成数量
-        console.log(`关卡 ${currentLevel.value} 配置的敌人总数: ${levelConfig.enemies.length}`);
-        console.log(`可用格子数量: ${shuffledCells.length}`);
-        console.log(`将生成 ${enemiesToGenerate} 个敌人`);
-        
-        // 创建敌人单位
-        let enemyCount = 0;
-        
-        for (let i = 0; i < enemiesToGenerate; i++) {
-            try {
-                const enemyConfig = levelConfig.enemies[i];
-                const cellToUse = shuffledCells[i];
-                
-                if (!cellToUse) {
-                    console.warn(`没有足够的格子放置第${i+1}个敌人`);
-                    continue;
-                }
-                
-                // 创建唯一ID
-                const enemyId = `enemy_${currentLevel.value}_${i}_${Date.now()}`;
-                
-                // 找到格子在数独中的行列位置
-                const row = Math.floor(cellToUse.index / 9);
-                const col = cellToUse.index % 9;
-                
-                // 获取该位置的数独数字
-                const cellValue = sudokuPuzzle.value[row][col];
-                
-                // 创建敌人单位
-                enemyUnits.value.push({
-                    id: enemyId,
-                    name: enemyConfig.name,
-                    hp: enemyConfig.hp || 1,
-                    maxHp: enemyConfig.hp || 1,
-                    atk: enemyConfig.atk || 1,
-                    traits: [], // 敌人特性，默认为空
-                    cellIndex: cellToUse.index,
-                    image: enemyConfig.image || 'assets/enemy_default.svg',
-                    number: cellValue || 0
-                    // 不设置armor属性
-                });
-                
-                // 标记格子为已占用，并设置单位
-                grid.value[cellToUse.index].occupied = true;
-                grid.value[cellToUse.index].unit = enemyUnits.value[enemyCount];
-                
-                enemyCount++;
-                
-                console.log(`在格子 ${cellToUse.index} (行${row}列${col}) 放置敌人 ${enemyUnits.value[enemyCount - 1].name}，格子数值: ${cellValue}`);
-            } catch (error) {
-                console.error(`生成第${i+1}个敌人时出错:`, error);
-            }
-        }
-        
-        // 打印敌人数量信息
-        console.log(`为关卡 ${currentLevel.value} (${levelConfig.name}) 实际生成了 ${enemyCount} 个敌人`);
-        
-        // 显示关卡名称
-        showMessage(`第${currentLevel.value}关: ${levelConfig.name} - 敌人数量: ${enemyCount}`);
     }
     
     // 结束回合
