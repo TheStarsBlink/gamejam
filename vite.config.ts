@@ -31,5 +31,18 @@ export default defineConfig({
   server: {
     open: true,
     port: 4000,
-  }
+    strictPort: false,
+    host: true,
+    watch: {
+      usePolling: true,
+      interval: 100
+    },
+    hmr: {
+      overlay: false
+    }
+  },
+  optimizeDeps: {
+    force: true
+  },
+  clearScreen: false
 }); 
