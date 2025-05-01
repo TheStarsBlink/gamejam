@@ -10,29 +10,33 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { useGameStore } from '../store/gameStore';
+import { useSudokuGameStore } from '../store/combinedGameStore';
 
-const gameStore = useGameStore();
+defineOptions({
+  name: 'GameStart'
+});
+
+const store = useSudokuGameStore();
 const gameStarted = ref(false);
 const hasSavedGame = ref(false);
 
 function validateEnemyUnits() {
-  if (gameStore.enemyUnits.length === 0) {
+  if (store.enemyUnits.length === 0) {
     console.warn('没有生成敌人，尝试再次初始化');
-    gameStore.startNewGame(true);
+    store.startNewGame(true);
     
     // 再次检查
     setTimeout(() => {
-      if (gameStore.enemyUnits.length === 0) {
+      if (store.enemyUnits.length === 0) {
         console.error('敌人生成失败，尝试手动调用敌人生成函数');
         // 修复方法：如果没有对应导出，可能需要额外刷新
-        gameStore.showMessage('正在初始化游戏...请稍等');
+        store.showMessage('正在初始化游戏...请稍等');
       } else {
-        console.log('成功生成敌人:', gameStore.enemyUnits.length);
+        console.log('成功生成敌人:', store.enemyUnits.length);
       }
     }, 500);
   } else {
-    console.log('成功生成敌人:', gameStore.enemyUnits.length);
+    console.log('成功生成敌人:', store.enemyUnits.length);
   }
 }
 
@@ -41,12 +45,12 @@ function startGame() {
   gameStarted.value = true;
   
   // 初始化游戏，传递true表示强制重置游戏状态
-  gameStore.startNewGame(true);
+  store.startNewGame(true);
   
   // 检查敌人是否生成
   setTimeout(validateEnemyUnits, 100);
   
-  console.log("新游戏已初始化，开始关卡:", gameStore.currentLevel);
+  console.log("新游戏已初始化，开始关卡:", store.currentLevel);
 }
 
 // 继续游戏
@@ -54,18 +58,18 @@ function continueGame() {
   gameStarted.value = true;
   
   // 加载保存的游戏状态
-  const success = gameStore.startNewGame(false);
+  const success = store.startNewGame(false);
   
   if (!success) {
     console.error("加载存档失败，开始新游戏");
-    gameStore.startNewGame(true);
+    store.startNewGame(true);
     
     // 检查敌人是否生成
     setTimeout(validateEnemyUnits, 100);
   } else {
-    console.log("继续游戏成功，当前关卡:", gameStore.currentLevel);
-    console.log("玩家单位数:", gameStore.playerUnits.length);
-    console.log("敌人单位数:", gameStore.enemyUnits.length);
+    console.log("继续游戏成功，当前关卡:", store.currentLevel);
+    console.log("玩家单位数:", store.playerUnits.length);
+    console.log("敌人单位数:", store.enemyUnits.length);
   }
 }
 

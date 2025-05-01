@@ -10,35 +10,35 @@
   </div>
   
   <!-- 牌库为空时的提示 -->
-  <div v-if="isDeckEmpty && gameStore.phase === 'deployment'" class="empty-deck-tip">
+  <div v-if="isDeckEmpty && store.phase === 'deployment'" class="empty-deck-tip">
     牌库已空，无法继续抽牌
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useGameStore } from '../store/gameStore';
+import { useSudokuGameStore } from '../store/combinedGameStore';
 import { useDebounceFn } from '@vueuse/core';
 
-const gameStore = useGameStore();
+const store = useSudokuGameStore();
 
 // 检查是否可以结束回合
 const canEndTurn = computed(() => {
   // 只有在部署阶段可以结束回合
-  return gameStore.phase === 'deployment';
+  return store.phase === 'deployment';
 });
 
 // 检查牌库是否为空
 const isDeckEmpty = computed(() => {
-  return gameStore.deck.length === 0;
+  return store.deck.length === 0;
 });
 
 // 按钮文本
 const buttonText = computed(() => {
   // 如果还有能量，则显示"完成出牌"，否则显示"结束回合"
-  if (gameStore.phase === 'deployment' && gameStore.player.energy > 0) {
+  if (store.phase === 'deployment' && store.player.energy > 0) {
     return '完成出牌';
-  } else if (gameStore.phase === 'deployment') {
+  } else if (store.phase === 'deployment') {
     return '结束回合';
   } else {
     return '结束回合';
@@ -49,10 +49,10 @@ const buttonText = computed(() => {
 const handleEndTurn = useDebounceFn(() => {
   if (canEndTurn.value) {
     if (isDeckEmpty.value) {
-      gameStore.showMessage('牌库已空，无法继续抽牌');
+      store.showMessage('牌库已空，无法继续抽牌');
       return;
     }
-    gameStore.endTurn();
+    store.endTurn();
   }
 }, 300); // 300ms防抖时间
 </script>

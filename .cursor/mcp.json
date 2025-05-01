@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "vue-mcp": {
+      "url": "http://localhost:4000/__mcp/sse"
+    }
+  }
+}

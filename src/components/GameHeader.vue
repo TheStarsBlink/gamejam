@@ -2,23 +2,23 @@
   <div class="game-header">
     <!-- 左侧游戏信息 -->
     <div class="game-info">
-      <div class="turn-info">回合: {{ gameStore.turn }}</div>
+      <div class="turn-info">回合: {{ store.turn }}</div>
       <div class="phase-info">阶段: {{ phaseText }}</div>
-      <div class="battle-info">战斗: {{ gameStore.currentBattle }}</div>
+      <div class="battle-info">战斗: {{ store.currentBattle }}</div>
       
     </div>
     
     <!-- 中间玩家信息 -->
     <div class="player-stats">
-      <div class="level-info">关卡 {{ gameStore.currentLevel }}</div>
+      <div class="level-info">关卡 {{ store.currentLevel }}</div>
       <div class="stat-label">
-        HP: {{ gameStore.player.hp }}/{{ gameStore.player.maxHp }} | 
-        ATK: {{ gameStore.player.atk }} | 
-        护甲: {{ gameStore.player.armor }}
+        HP: {{ store.player.hp }}/{{ store.player.maxHp }} | 
+        ATK: {{ store.player.atk }} | 
+        护甲: {{ store.player.armor }}
       </div>
       <div class="health-bar">
-        <div class="health-fill" :style="{ width: `${(gameStore.player.hp / gameStore.player.maxHp) * 100}%` }"></div>
-        <span>{{ gameStore.player.hp }}/{{ gameStore.player.maxHp }}</span>
+        <div class="health-fill" :style="{ width: `${(store.player.hp / store.player.maxHp) * 100}%` }"></div>
+        <span>{{ store.player.hp }}/{{ store.player.maxHp }}</span>
       </div>
     </div>
     
@@ -26,15 +26,15 @@
     <div class="resources">
       <div class="energy">
         <span class="energy-label">能量:</span>
-        <span class="energy-value">{{ gameStore.player.energy }}/{{ gameStore.player.maxEnergy }}</span>
+        <span class="energy-value">{{ store.player.energy }}/{{ store.player.maxEnergy }}</span>
       </div>
       <div class="deck-info">
         <span class="deck-label">牌库:</span>
-        <span class="deck-value">{{ gameStore.deck.length }}</span>
+        <span class="deck-value">{{ store.deck.length }}</span>
       </div>
       <div class="gold-info">
         <span class="gold-label">金币:</span>
-        <span class="gold-value">{{ gameStore.player.gold }}</span>
+        <span class="gold-value">{{ store.player.gold }}</span>
       </div>
     </div>
   </div>
@@ -42,13 +42,17 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useGameStore } from '../store/gameStore';
+import { useSudokuGameStore } from '../store/combinedGameStore';
 
-const gameStore = useGameStore();
+defineOptions({
+  name: 'GameHeader'
+});
+
+const store = useSudokuGameStore();
 
 // 将阶段文本转换为中文
 const phaseText = computed(() => {
-  switch (gameStore.phase) {
+  switch (store.phase) {
     case 'deployment': return '部署';
     case 'battle': return '战斗';
     case 'victory': return '胜利';

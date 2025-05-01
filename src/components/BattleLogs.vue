@@ -8,13 +8,13 @@
     <div class="battle-logs-content" v-if="isVisible">
       <div class="logs-list" ref="logsContainer">
         <div 
-          v-for="(log, index) in gameStore.battleLogHistory" 
+          v-for="(log, index) in store.battleLogHistory" 
           :key="index" 
           :class="['log-entry', log.type]"
         >
           {{ log.text }}
         </div>
-        <div v-if="gameStore.battleLogHistory.length === 0" class="empty-logs">
+        <div v-if="store.battleLogHistory.length === 0" class="empty-logs">
           暂无战斗日志
         </div>
       </div>
@@ -29,15 +29,19 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { useGameStore } from '@/store/gameStore';
+import { useSudokuGameStore } from '../store/combinedGameStore';
 
-const gameStore = useGameStore();
+defineOptions({
+  name: 'BattleLogs'
+});
+
+const store = useSudokuGameStore();
 const isVisible = ref(true);
 const logsContainer = ref<HTMLElement | null>(null);
 
 // 清空日志
 function clearLogs() {
-  gameStore.battleLogHistory = [];
+  store.battleLogHistory = [];
 }
 
 // 滚动到底部

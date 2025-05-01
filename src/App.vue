@@ -16,7 +16,7 @@
     <GameControls />
 
     <!-- 游戏消息提示 -->
-    <GameMessage v-if="gameStore.message" :message="gameStore.message" />
+    <GameMessage v-if="store.message" :message="store.message" />
     
     <!-- 战斗日志 -->
     <BattleLogs />
@@ -25,7 +25,7 @@
 
 <script setup lang="ts">
 import { onMounted } from 'vue';
-import { useGameStore } from './store/gameStore';
+import { useSudokuGameStore } from './store/combinedGameStore';
 import GameHeader from './components/GameHeader.vue';
 import GameBoard from './components/GameBoard.vue';
 import CardHand from './components/CardHand.vue';
@@ -34,13 +34,17 @@ import GameMessage from './components/GameMessage.vue';
 import GameStart from './components/GameStart.vue';
 import BattleLogs from './components/BattleLogs.vue';
 
-const gameStore = useGameStore();
+const store = useSudokuGameStore();
 
 // 不再自动初始化游戏，而是通过GameStart组件的按钮触发
 // onMounted(() => {
 //   // 初始化游戏
-//   gameStore.startNewGame();
+//   store.startNewGame();
 // });
+
+defineOptions({
+  name: 'App'
+});
 </script>
 
 <style scoped>
