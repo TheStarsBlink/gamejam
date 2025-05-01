@@ -1,15 +1,7 @@
-import Phaser from 'phaser';
-import { MainMenuScene } from './scenes/MainMenuScene';
-import { BattleScene } from './scenes/BattleScene';
-import { SudokuBattleScene } from './scenes/SudokuBattleScene';
-import { CardSelectionScene } from './scenes/CardSelectionScene';
-import { LoadingScene } from './scenes/LoadingScene';
-import { ShopScene } from './scenes/ShopScene';
-import { SudokuScene } from './scenes/SudokuScene';
 import * as UI from './ui';
-import { GameState, Card } from './ui';
+import { GameState } from './ui';
 
-// 游戏引擎接口 (本地定义，可选)
+// 游戏引擎接口
 interface GameEngine {
   endTurn: () => void;
   updateUI: () => void;
@@ -19,31 +11,7 @@ interface GameEngine {
 
 // 全局类型已在 src/global/types.d.ts 中定义
 
-// 游戏配置
-const config: Phaser.Types.Core.GameConfig = {
-  type: Phaser.AUTO,
-  width: 800,
-  height: 600,
-  parent: 'game',
-  scene: [
-    LoadingScene, 
-    MainMenuScene, 
-    BattleScene, 
-    SudokuBattleScene, 
-    SudokuScene,
-    CardSelectionScene, 
-    ShopScene
-  ],
-  physics: {
-    default: 'arcade',
-    arcade: {
-      gravity: { x: 0, y: 0 },
-      debug: false
-    }
-  }
-};
-
-// 创建游戏实例并初始化DOM UI
+// 初始化游戏
 document.addEventListener('DOMContentLoaded', () => {
   // 创建游戏状态
   const gameState: GameState = {
@@ -70,15 +38,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // 创建游戏实例
-  const game = new Phaser.Game(config);
-
-  // 创建一个局部 gameEngine 对象
+  // 创建游戏引擎实例
   const localGameEngine: GameEngine = {
     endTurn: () => {
       gameState.battle.currentTurn++;
       gameState.battle.activePlayer = gameState.battle.activePlayer === 'player' ? 'enemy' : 'player';
-      localGameEngine.updateUI(); // 使用局部引用
+      localGameEngine.updateUI();
     },
     updateUI: () => {
       UI.updateUI(gameState);
@@ -93,7 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
           console.log(`使用卡牌: ${card.name}`);
           gameState.player.mana -= card.cost;
           UI.showMessage(`使用了卡牌: ${card.name}`);
-          localGameEngine.updateUI(); // 使用局部引用
+          localGameEngine.updateUI();
         } else {
           UI.showMessage("法力不足!");
         }
@@ -101,15 +66,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // 将局部对象赋值给全局变量（使用类型断言避免TS错误）
+  // 将局部对象赋值给全局变量
   (window as any).gameEngine = localGameEngine;
 
-  // 初始化UI，确保传递的是已定义的函数
+  // 初始化UI
   UI.initUI(gameState, {
     endTurn: localGameEngine.endTurn,
     cardClick: localGameEngine.onCardClick
   });
   
   // 初始化后立即更新UI显示
-  localGameEngine.updateUI(); // 使用局部引用
+  localGameEngine.updateUI();
 });

@@ -178,11 +178,10 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { useGameStore, Cell, Unit } from '../store/gameStore';
+import { useSudokuGameStore, type Cell, type Unit } from '../store/combinedGameStore';
 import type { Card } from '../types/Card';
-import { useSudokuGameStore } from '../store/combinedGameStore'
 
-const gameStore = useGameStore();
+const gameStore = useSudokuGameStore();
 const selectedUnit = ref<Unit | null>(null);
 const showDebugInfo = ref(true); // 显示调试信息
 const showRegionInfo = ref(true); // 显示区域信息

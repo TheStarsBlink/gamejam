@@ -3,11 +3,17 @@
 ## 游戏概览
 这是一个结合了数独元素和卡牌游戏机制的回合制战斗游戏。玩家使用各种卡牌部署单位和施放法术，通过完成数独条件可以获得强力加成。
 
+# 数独卡牌游戏
+
+## 游戏概览
+这是一个结合了数独元素和卡牌游戏机制的回合制战斗游戏。玩家使用各种卡牌部署单位和施放法术，通过完成数独条件可以获得强力加成。游戏使用纯 DOM UI 实现，不依赖任何游戏引擎。
+
 ## 核心文件结构
 - [src/store/combinedGameStore.ts](mdc:src/store/combinedGameStore.ts) - 主要游戏逻辑和状态管理
 - [src/components/GameBoard.vue](mdc:src/components/GameBoard.vue) - 游戏主界面组件
 - [src/utils/SudokuGenerator.ts](mdc:src/utils/SudokuGenerator.ts) - 数独谜题生成器
 - [src/levels/levelManager.ts](mdc:src/levels/levelManager.ts) - 关卡管理系统
+- [src/ui.ts](mdc:src/ui.ts) - DOM UI 管理和渲染
 
 ## 主要游戏机制
 1. **卡牌系统** - 玩家可以打出单位牌和法术牌，单位部署到棋盘，法术直接产生效果
@@ -25,3 +31,10 @@
 2. 数独加成：完成行/列/区域数独时，玩家单位获得+10生命值和+2护甲
 3. 单位生命值降至0或以下时会死亡
 4. 部署单位不会弃掉其他手牌，只有法术牌会弃掉所有手牌
+
+## UI 实现说明
+游戏界面完全使用 DOM 元素构建，主要包括：
+1. Vue 组件用于构建游戏界面结构
+2. CSS 实现游戏元素的样式和动画
+3. DOM 事件处理用户交互
+4. 不使用任何游戏引擎，保持轻量级实现
