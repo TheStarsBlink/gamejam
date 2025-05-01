@@ -254,8 +254,6 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
         // 根据卡牌类型执行不同逻辑
         if (card.type === 'unit') {
             deployUnit(card, cellIndex)
-            // 单位牌直接加入弃牌堆，但保留其他手牌
-            discard.value.push(playedCard)
         } else if (card.type === 'spell') {
             if (cellIndex !== -1) {
                 // 目标法术
@@ -264,15 +262,10 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
                 // 全局法术
                 useGlobalSpell(card)
             }
-            
-            // 法术牌使用后，将所有手牌（包括刚打出的）放入弃牌堆
-            discard.value.push(playedCard)
-            if (hand.value.length > 0) {
-                discard.value.push(...hand.value)
-                hand.value = []
-                showMessage('剩余手牌已放入弃牌堆')
-            }
         }
+        
+        // 将使用的牌放入弃牌堆
+        discard.value.push(playedCard)
         
         // 自动结束回合
         if (phase.value === 'deployment') {
@@ -599,15 +592,21 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
             showMessage(`抽取了 ${card.value} 张牌`)
         } else if (card.description.includes('群体伤害') && card.value !== undefined) {
             // 对所有敌方单位造成伤害
+            const deadEnemies = [];
             for (const unit of enemyUnits.value) {
                 unit.hp -= card.value
                 if (unit.hp <= 0) {
-                    removeUnit(unit.id)
+                    deadEnemies.push(unit.id);
                 }
             }
             
             // 移除死亡单位
-            enemyUnits.value = enemyUnits.value.filter(unit => unit.hp > 0)
+            for (const unitId of deadEnemies) {
+                removeUnit(unitId);
+            }
+            
+            // 确保所有死亡单位都被移除
+            enemyUnits.value = enemyUnits.value.filter(unit => unit.hp > 0);
             
             showMessage(`对所有敌人造成了 ${card.value} 点伤害`)
         }
@@ -862,7 +861,14 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
         // 回复能量
         player.value.energy = player.value.maxEnergy;
         
-        // 抽新的手牌
+        // 先将所有手牌放入弃牌堆
+        if (hand.value.length > 0) {
+            discard.value.push(...hand.value);
+            hand.value = [];
+            showMessage('剩余手牌已放入弃牌堆');
+        }
+        
+        // 然后抽新的手牌
         drawCards(3);
         
         showMessage(`第 ${turn.value} 回合开始！`);
@@ -932,8 +938,6 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
             if (target.armor && target.armor > 0) {
                 const absorbedDamage = Math.min(target.armor, actualDamage);
                 actualDamage -= absorbedDamage;
-                // 如果需要消耗护甲，可以在这里更新
-                // target.armor -= absorbedDamage;
             }
             
             // 记录攻击前的状态
@@ -942,19 +946,27 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
             // 应用伤害
             target.hp -= actualDamage;
             
-            // 确保生命值不低于0
-            if (target.hp < 0) target.hp = 0;
-            
             // 记录攻击过程
             addBattleLog(
                 `${attacker.name}(攻击力${attacker.atk}, 生命值${attacker.hp}) 攻击 ${target.name}, 造成${actualDamage}点伤害, ${target.name}生命值从${originalHp}降至${target.hp}`, 
                 'damage'
             );
             
-            // 检查目标是否死亡
+            // 检查目标是否死亡（生命值小于等于0）
             if (target.hp <= 0) {
                 addBattleLog(`${target.name} 被击败！`, 'special');
                 removeUnit(target.id);
+                
+                // 立即检查战斗是否结束
+                if (enemyUnits.value.length === 0) {
+                    addBattleLog('战斗胜利！所有敌人已被击败', 'special');
+                    handleVictory();
+                    return; // 立即结束战斗
+                } else if (playerUnits.value.length === 0) {
+                    addBattleLog('战斗失败！所有玩家单位已被击败', 'special');
+                    handleDefeat();
+                    return; // 立即结束战斗
+                }
             }
         }
         

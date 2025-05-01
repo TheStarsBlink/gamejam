@@ -644,11 +644,19 @@ function startRegionBattle(regionIndex: number) {
         const originalHp = unit.hp;
         // 计算实际伤害，这里简化为1，可以根据需要调整
         const actualDamage = 1; 
-        unit.hp = Math.max(1, unit.hp - actualDamage); // 确保不会死亡，最低为1
+        // 不再保证生命值最低为1，而是直接减去伤害
+        unit.hp -= actualDamage;
         if (unit.hp != originalHp) {
           gameStore.addBattleLog(`战斗失败导致 ${unit.name} 受到额外伤害，生命值从 ${originalHp} 降至 ${unit.hp}`, 'damage');
         }
+        
+        // 如果单位生命值小于等于0，则移除单位
+        if (unit.hp <= 0) {
+          gameStore.addBattleLog(`${unit.name} 被击败！`, 'special');
+          gameStore.removeUnit(unit.id);
+        }
       }
+      
       battleResult.value = "失败！您的单位受到了伤害";
       
       // 记录失败日志
