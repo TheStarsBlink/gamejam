@@ -654,7 +654,7 @@ function startRegionBattle(regionIndex: number) {
         if (unit.hp <= 0) {
           gameStore.addBattleLog(`${unit.name} 被击败！`, 'special');
           gameStore.removeUnit(unit.id);
-        }
+      }
       }
       
       battleResult.value = "失败！您的单位受到了伤害";

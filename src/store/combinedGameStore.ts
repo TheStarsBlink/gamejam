@@ -713,13 +713,13 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
             console.error('关卡配置错误或没有敌人配置');
             return;
         }
-
+        
         // 初始化9个区域的敌人计数
         const regionCounts = new Array(9).fill(0);
-        
+            
         // 随机打乱可用格子
         const shuffledCells = [...availableCells].sort(() => Math.random() - 0.5);
-        
+            
         // 创建敌人单位
         let enemyCount = 0;
         let enemyIndex = 0;
@@ -770,21 +770,21 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
     // 在指定格子创建敌人
     function createEnemyInCell(enemyConfig: any, cell: Cell) {
         const enemyId = `enemy_${currentLevel.value}_${enemyUnits.value.length}_${Date.now()}`;
-        
-        // 找到格子在数独中的行列位置
+                
+                // 找到格子在数独中的行列位置
         const row = Math.floor(cell.index / 9);
         const col = cell.index % 9;
-        
-        // 获取该位置的数独数字
-        const cellValue = sudokuPuzzle.value[row][col];
-        
-        // 创建敌人单位
+                
+                // 获取该位置的数独数字
+                const cellValue = sudokuPuzzle.value[row][col];
+                
+                // 创建敌人单位
         const enemy = {
-            id: enemyId,
-            name: enemyConfig.name,
-            hp: enemyConfig.hp || 1,
-            maxHp: enemyConfig.hp || 1,
-            atk: enemyConfig.atk || 1,
+                    id: enemyId,
+                    name: enemyConfig.name,
+                    hp: enemyConfig.hp || 1,
+                    maxHp: enemyConfig.hp || 1,
+                    atk: enemyConfig.atk || 1,
             traits: [],
             traitNames: {
                 'row_buffed': '行数独加成',
@@ -792,16 +792,16 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
                 'region_buffed': '区域数独加成'
             },
             cellIndex: cell.index,
-            image: enemyConfig.image || 'assets/enemy_default.svg',
-            number: cellValue || 0
+                    image: enemyConfig.image || 'assets/enemy_default.svg',
+                    number: cellValue || 0
         };
         
         enemyUnits.value.push(enemy);
-        
-        // 标记格子为已占用，并设置单位
+                
+                // 标记格子为已占用，并设置单位
         grid.value[cell.index].occupied = true;
         grid.value[cell.index].unit = enemy;
-        
+                
         console.log(`在格子 ${cell.index} (行${row}列${col}) 放置敌人 ${enemy.name}，格子数值: ${cellValue}`);
     }
     
