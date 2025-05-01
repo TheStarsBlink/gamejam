@@ -14,21 +14,37 @@
 *   **`public/`**: 存放静态资源，会被直接复制到构建输出目录。
 *   **`src/`**: 包含项目的主要源代码。
     *   `main.ts`: Vue 应用的入口点，负责创建 Vue 实例、设置路由和 Pinia 状态管理，并将应用挂载到 `index.html`。
-    *   `App.vue`: 根 Vue 组件，组织布局主要的 UI 视图。
-    *   `GameContainer.vue`: 可能用于包裹主要游戏区域的 Vue 组件。
+    *   `App.vue`: 根 Vue 组件，组织布局主要的 UI 视图（如 `GameHeader`, `GameBoard`, `CardHand`, `GameControls`）。
+    *   `GameContainer.vue`: 可能用于包裹主要游戏区域的 Vue 组件，提供布局结构。
     *   `style.css`: 全局 CSS 样式。
     *   `index.ts`: 可能包含一些全局导出或配置。
     *   `ui.ts`: 可能包含与 UI 相关的工具函数或配置。
-    *   **`assets/`**: 存放 Vue 组件可能使用的本地资源（如图标、图片）。
-    *   **`components/`**: 存放所有的 Vue 组件。
-        *   `GameHeader.vue`: 显示顶部游戏信息（回合、生命、能量等）。
-        *   `GameBoard.vue`: 渲染游戏棋盘和单位。
-        *   `CardHand.vue`: 显示玩家手牌。
-        *   `GameControls.vue`: 提供游戏控制按钮（结束回合等）。
-        *   `GameMessage.vue`: 显示临时游戏消息。
-        *   `GameStart.vue`: 游戏开始界面/按钮。
-        *   `BattleLogs.vue`: 显示战斗日志。
-        *   `*.vue`: 其他辅助 UI 组件。
+    *   **`assets/`**: 存放 Vue 组件可能使用的本地资源（如图标 `mana-crystal.svg`、卡牌图片占位符等）。
+    *   **`components/`**: 存放所有的 Vue 组件，构成游戏的用户界面。
+        *   `GameHeader.vue`: **(顶部信息栏)** 位于游戏界面最上方。左侧显示回合数、当前阶段（中文，如"部署"、"战斗"）、战斗计数；中间显示当前关卡、玩家核心属性（HP/MaxHP、ATK、护甲）和带有填充效果的生命条；右侧显示资源信息（能量/最大能量、牌库剩余卡牌数、金币数）。数据主要来自 `store`。
+        *   `GameBoard.vue`: **(中央棋盘区域)** 占据游戏界面的中心区域。
+            *   **数独网格**: 渲染一个 9x9 的网格 (`sudoku-board`)。每个格子 (`grid-cell`) 显示其对应的数独数字 (`cell.value`)。根据格子的索引添加粗边框以区分 3x3 的数独区域。
+            *   **单位显示**: 如果格子被单位占用 (`cell.unit`)，则在格子上渲染单位信息：单位的数字 (`unit.number`)、名称 (`unit.name`)、攻防/血量 (`unit.atk`/`unit.hp`)。敌我单位通过不同的 CSS 类 (`enemy-unit`) 进行区分。
+            *   **交互与高亮**: 处理格子的点击事件 (`handleCellClick`)。根据当前选中的卡牌 (`gameStore.selectedCard`) 和游戏状态，动态添加 CSS 类来高亮可选的格子 (`highlighted`, `selectable`) 或标示法术目标 (`enemy-target`, `friendly-target`)。
+            *   **区域信息 (右侧)**: 有一个可开关的侧边栏 (`region-indicator`)，显示一个 3x3 的区域选择器。选中区域后，会显示该区域的统计信息（敌人/我方单位数量、数字和）并提供"开始战斗"按钮（如果条件满足）。
+            *   **单位详情 (右侧浮动)**: 点击棋盘上的单位时，会弹出一个浮动的侧边栏 (`unit-details-sidebar`)，显示该单位的详细信息：名称、头像 (`unit-portrait`)、攻防/血量、特性列表（中文）、单位类型（友方/敌方）。
+            *   **调试信息**: 包含一个可开关的调试区域 (`debug-info`)，显示当前关卡、敌人列表及其位置、格子占用情况等内部状态。
+        *   `CardHand.vue`: **(底部手牌区域)** 位于游戏界面下方，横向排列。
+            *   **手牌展示**: 显示玩家当前手牌 (`gameStore.hand`)。每张卡牌 (`game-card`) 根据稀有度 (`card-rarity`) 显示不同边框颜色。卡牌上显示费用 (`card-cost`)、名称 (`card-name`)、图片 (`card-image`)、描述 (`card-description`) 和类型文本 (`card-type`)。单位卡还会显示攻击力 (`card-attack`) 和生命值 (`card-health`)，以及其代表的数字 (`card-number-display`)。法术卡会用小图标 (`spell-indicator`) 提示目标类型（对敌、对友、直接释放）。
+            *   **交互**: 处理卡牌点击事件 (`selectCard`) 来选中或取消选中卡牌。根据玩家能量和游戏阶段，禁用无法使用的卡牌 (`disabled` 类)。支持向上拖拽直接释放类型的法术。
+            *   **牌库/弃牌堆**: 在手牌区域两侧显示牌库 (`deck-pile`) 和弃牌堆 (`discard-pile`) 的剩余数量。点击它们会弹出模态窗口 (`card-preview-modal`)，展示其中包含的卡牌列表。
+            *   **能量显示**: 在手牌区域右侧显示玩家当前的能量水晶 (`mana-display`)，用亮/暗的水晶表示可用/最大能量。
+        *   `GameControls.vue`: **(底部中央控制按钮)** 通常位于手牌区域下方或中央。
+            *   **核心按钮**: 主要包含一个"结束回合"按钮。按钮的文本 (`buttonText`) 会根据当前状态（如部署阶段有能量时显示"完成出牌"，否则显示"结束回合"）动态变化。
+            *   **状态控制**: 按钮是否可点击 (`disabled`) 取决于游戏阶段 (`store.phase === 'deployment'`) 和牌库是否为空 (`isDeckEmpty`)。点击时调用 `store.endTurn()` (带有防抖处理 `useDebounceFn`)。
+            *   **提示**: 当牌库为空且无法结束回合时，会显示提示信息 (`empty-deck-tip`)。
+        *   `GameMessage.vue`: **(屏幕中央消息提示)** 一个简单的浮动组件。当 `store.message` 有内容时，在屏幕中央显示一个带背景的文本消息，通常用于显示 "战斗开始！"、"能量不足！" 等临时反馈。消息带有淡入淡出动画 (`Transition name="fade"`) 和脉冲效果 (`animation: pulse`)。
+        *   `GameStart.vue`: **(初始界面覆盖层)** 在游戏刚加载时显示的一个全屏覆盖层 (`game-start-overlay`)。包含游戏标题、一个"新游戏"按钮 (`start-button`)。如果检测到本地存储中有存档 (`hasSavedGame`)，还会显示一个"继续游戏"按钮 (`continue-button`)。点击按钮会调用 `store.startNewGame()` 并隐藏此覆盖层。
+        *   `BattleLogs.vue`: **(右上角战斗日志)** 一个通常位于屏幕右上角的浮动窗口 (`battle-logs-container`)。
+            *   **显示/隐藏**: 标题栏包含一个按钮，可以在展开 (`+`) 和收起 (`×`) 状态间切换。
+            *   **日志列表**: 在可滚动区域 (`logs-list`) 中显示 `store.battleLogHistory` 中的所有日志条目。每个条目根据其类型 (`log.type`: info, damage, heal, special) 应用不同的背景色和边框样式。
+            *   **控制**: 包含一个"清空日志"按钮 (`clear-log-btn`)。当日志内容更新时，会自动滚动到底部。
+        *   `Card.vue`, `UnitCard.vue`, `PlayerCard.vue`, `PlayerHand.vue`, `Hand.vue`, `GameMain.vue`, `BattleLog.vue`: 这些可能是辅助性的、被其他主组件引用的子组件，或是在开发过程中尝试的不同结构，具体作用需要进一步分析其使用场景。例如 `Card.vue` 可能定义了单张卡牌的基础渲染逻辑。
     *   **`core/`**: **(迁移重点)** 存放与框架无关的核心游戏逻辑。
         *   `GameManager.ts`: 游戏主管理器（单例），协调游戏流程、状态和各个子系统。**(需要迁移并移除对 `window` 的依赖)**
         *   `Player.ts`: 玩家类，管理玩家属性（HP, ATK, 能量等）。
@@ -39,7 +55,7 @@
         *   `cards/`: 存放具体的卡牌类型实现 (`UnitCard.ts`, `SpellCard.ts`, `TrapCard.ts`)。
         *   `events/EventSystem.ts`: 一个简单的发布/订阅事件系统。**(可直接迁移或替换)**
     *   **`store/`**: **(需要重构)** 存放状态管理逻辑 (Pinia)。
-        *   `combinedGameStore.ts`: **(主要重构对象)** Pinia store，目前混合了核心游戏逻辑、状态管理、Vue 响应式处理、本地存储以及部分 UI 逻辑。**需要将其中的核心逻辑提取到 `core` 或新的 PuerTS 控制器中，并移除所有 Pinia 和 Vue 的依赖。**
+        *   `combinedGameStore.ts`: **(主要重构对象)** Pinia store，目前混合了核心游戏逻辑、状态管理、Vue 响应式处理、本地存储以及部分 UI 驱动逻辑（如 `selectCard`）。**需要将其中的核心逻辑提取到 `core` 或新的 PuerTS 控制器中，并移除所有 Pinia 和 Vue 的依赖。UI 驱动逻辑需要移到 TS->C# 的桥接层处理。**
     *   **`router/`**: (如果使用 Vue Router) 存放路由配置。
     *   **`types/`**: 存放共享的 TypeScript 类型定义 (`Card.ts`, `Unit.ts`, `GameTypes.ts` 等)。**(可直接迁移)**
     *   **`utils/`**: 存放通用工具函数。
