@@ -212,9 +212,10 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
     
     // 抽牌
     function drawCards(count: number) {
-        if (deck.value.length === 0 && discard.value.length > 0) {
-            // 如果牌库空了，但弃牌堆有牌，则将弃牌堆洗入牌库
-            shuffleDiscardIntoDeck()
+        // 如果牌库没牌，就不抽了
+        if (deck.value.length === 0) {
+            showMessage('牌库已空！')
+            return
         }
         
         // 确定实际能抽到的卡牌数
@@ -247,9 +248,14 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
         // 使用能量
         player.value.energy -= card.cost
         
+        // 从手牌中移除
+        const playedCard = hand.value.splice(cardIndex, 1)[0]
+        
         // 根据卡牌类型执行不同逻辑
         if (card.type === 'unit') {
             deployUnit(card, cellIndex)
+            // 单位牌直接加入弃牌堆，但保留其他手牌
+            discard.value.push(playedCard)
         } else if (card.type === 'spell') {
             if (cellIndex !== -1) {
                 // 目标法术
@@ -258,19 +264,14 @@ export const useSudokuGameStore = defineStore('sudokuGame', () => {
                 // 全局法术
                 useGlobalSpell(card)
             }
-        }
-        
-        // 从手牌中移除
-        const playedCard = hand.value.splice(cardIndex, 1)[0]
-        
-        // 加入弃牌堆
-        discard.value.push(playedCard)
-        
-        // 将剩余手牌放入弃牌堆
-        if (hand.value.length > 0) {
-            discard.value.push(...hand.value)
-            hand.value = []
-            showMessage('剩余手牌已放入弃牌堆')
+            
+            // 法术牌使用后，将所有手牌（包括刚打出的）放入弃牌堆
+            discard.value.push(playedCard)
+            if (hand.value.length > 0) {
+                discard.value.push(...hand.value)
+                hand.value = []
+                showMessage('剩余手牌已放入弃牌堆')
+            }
         }
         
         // 自动结束回合
