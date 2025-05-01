@@ -46,7 +46,12 @@ export enum Trait {
     MAGIC = '魔法',
     SHIELD = '护盾',
     POISON = '毒性',
-    REGENERATION = '再生'
+    REGENERATION = '再生',
+    DOUBLE_ATTACK = '双重攻击',
+    PIERCE = '穿透',
+    BACKSTAB = '背刺',
+    DEATHRATTLE = '亡语',
+    COUNTER = '反击'
 }
 
 // 方向

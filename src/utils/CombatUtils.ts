@@ -80,13 +80,13 @@ const handlePostAttackEffects = (attacker: Unit, target: Unit): void => {
             duration: poisonDuration,
             value: poisonValue,
             description: `每回合受到${poisonValue}点伤害`,
-            onApply: (unit: Unit) => {
+            onApply: (unit: any) => {
                 // 应用时无特殊效果
             },
-            onRemove: (unit: Unit) => {
+            onRemove: (unit: any) => {
                 // 移除时无特殊效果
             },
-            onTurnEnd: (unit: Unit) => {
+            onTurnEnd: (unit: any) => {
                 unit.hp -= poisonValue;
                 if (unit.hp <= 0) {
                     unit.hp = 0;
@@ -101,7 +101,7 @@ const handlePostAttackEffects = (attacker: Unit, target: Unit): void => {
             target.statusEffects[existingPoisonIndex].duration = poisonDuration;
         } else {
             target.statusEffects.push(poisonEffect);
-            poisonEffect.onApply(target);
+            (poisonEffect.onApply as any)(target);
         }
     }
     
@@ -190,7 +190,15 @@ export const selectTarget = (
             }
             
             // 顺时针旋转方向
-            currentDirection = (currentDirection + 1) % 4;
+            if (currentDirection === Direction.UP) {
+                currentDirection = Direction.RIGHT;
+            } else if (currentDirection === Direction.RIGHT) {
+                currentDirection = Direction.DOWN;
+            } else if (currentDirection === Direction.DOWN) {
+                currentDirection = Direction.LEFT;
+            } else {
+                currentDirection = Direction.UP;
+            }
         }
         
         // 如果按方向找不到目标，随机选择一个敌人
@@ -243,9 +251,9 @@ export const processStatusEffects = (unit: Unit, phase: 'turnStart' | 'turnEnd')
     updatedUnit.statusEffects.forEach((effect, index) => {
         // 根据阶段调用对应的回调
         if (phase === 'turnStart' && effect.onTurnStart) {
-            effect.onTurnStart(updatedUnit);
+            (effect.onTurnStart as any)(updatedUnit);
         } else if (phase === 'turnEnd' && effect.onTurnEnd) {
-            effect.onTurnEnd(updatedUnit);
+            (effect.onTurnEnd as any)(updatedUnit);
         }
         
         // 减少持续时间
@@ -254,7 +262,7 @@ export const processStatusEffects = (unit: Unit, phase: 'turnStart' | 'turnEnd')
         // 标记已过期的效果
         if (effect.duration <= 0) {
             expiredEffects.push(index);
-            effect.onRemove(updatedUnit);
+            (effect.onRemove as any)(updatedUnit);
         }
     });
     
