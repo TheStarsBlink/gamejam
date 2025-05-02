@@ -1,0 +1,50 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# 项目结构文档指南
+
+## PROJECT_STRUCTURE.md
+
+[PROJECT_STRUCTURE.md](mdc:PROJECT_STRUCTURE.md)是本项目的核心文档，详细描述了项目的文件结构和Unity(PuerTS)迁移计划。此文档应保持最新，反映当前项目的实际状态。
+
+## 文档结构
+
+PROJECT_STRUCTURE.md主要包含两部分内容：
+
+1. **当前Vue项目文件结构**：详细描述了项目的目录和文件组织
+2. **Unity(PuerTS)迁移计划**：提供了将核心逻辑迁移到Unity项目的详细步骤
+
+## 文档更新原则
+
+当对项目进行以下修改时，需要更新PROJECT_STRUCTURE.md：
+
+1. 添加新的源代码文件或目录
+2. 添加新的测试文件
+3. 修改现有功能的实现方式
+4. 修改项目的构建或迁移计划
+
+## 测试相关文档
+
+在文档的测试部分(`tests/`目录描述)，需要列出所有测试文件及其功能说明：
+
+```markdown
+*   **`tests/`**: 包含项目的测试代码。
+    *   **`utils/`**: 工具函数的单元测试。
+        *   `SudokuGenerator.test.ts`: 数独生成器的测试用例，测试数独生成功能和数独验证逻辑。
+        *   `GridUtils.test.ts`: 网格工具函数的测试用例，包括相邻格子计算、方向判断等测试。
+        *   `CombatUtils.test.ts`: 战斗工具函数的测试用例，测试基础攻击、护甲减伤、双重攻击特性、目标选择等战斗核心逻辑。
+        *   `GameRules.test.ts`: 游戏规则测试用例，测试战斗顺序、放置单位规则、抽牌规则、打牌规则及洗牌功能。
+        *   `CardUtils.test.ts`: 卡牌工具函数测试用例，测试牌库创建、洗牌、抽牌、单位创建及属性计算功能。
+```
+
+同时，在迁移计划的"阶段五：测试与调试"部分，需要确保迁移测试代码的描述包含所有测试文件：
+
+```markdown
+2.  **迁移测试代码**: 
+    *   将原Vue项目中的测试代码（如`tests/utils/`目录下的测试文件）迁移到Unity项目中。
+    *   在Unity项目中设置适当的测试框架，可以使用Unity自带的Test Framework，或者通过PuerTS集成JS测试框架如Jest。
+    *   确保所有测试用例都能在新环境中正常运行，这是验证核心逻辑迁移成功的重要指标。
+    *   针对`SudokuGenerator.test.ts`、`GridUtils.test.ts`、`CombatUtils.test.ts`、`GameRules.test.ts`和`CardUtils.test.ts`等已有测试，确保它们在Unity环境中也能通过。
+```

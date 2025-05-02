@@ -1,0 +1,68 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# 测试实践与文档更新指南
+
+## 项目测试结构
+
+本项目使用Vitest作为测试框架，所有测试文件都存放在`tests/`目录下。测试文件应该使用`.test.ts`作为文件扩展名，并按照被测试模块的路径结构组织。
+
+当前测试文件包括：
+- [tests/utils/SudokuGenerator.test.ts](mdc:tests/utils/SudokuGenerator.test.ts): 数独生成器的测试
+- [tests/utils/GridUtils.test.ts](mdc:tests/utils/GridUtils.test.ts): 网格工具函数的测试
+- [tests/utils/CombatUtils.test.ts](mdc:tests/utils/CombatUtils.test.ts): 战斗工具函数的测试
+- [tests/utils/GameRules.test.ts](mdc:tests/utils/GameRules.test.ts): 游戏规则的测试
+- [tests/utils/CardUtils.test.ts](mdc:tests/utils/CardUtils.test.ts): 卡牌工具函数的测试
+
+## 测试开发指南
+
+### 新功能测试编写
+
+每当添加新的功能或工具函数时，都应该编写相应的测试用例：
+
+1. 创建一个与源文件名相对应的测试文件（如`src/utils/MyUtil.ts` → `tests/utils/MyUtil.test.ts`）
+2. 测试应涵盖基本功能、边界情况和可能的错误条件
+3. 使用`describe`和`it`嵌套结构组织测试
+4. 尽量避免测试间的耦合，每个测试应该独立运行
+
+### 模拟依赖
+
+当测试需要模拟外部依赖时，可以使用Vitest的`vi.mock`功能：
+
+```typescript
+vi.mock('../../src/cards/MinionCards', () => ({
+  minionCards: [
+    { id: 'minion1', name: '随从1', rarity: 'common', type: 'unit' }
+  ]
+}))
+```
+
+## 项目文档更新
+
+[PROJECT_STRUCTURE.md](mdc:PROJECT_STRUCTURE.md)是项目的主要文档文件，记录了项目结构和迁移计划。
+
+### 文档更新原则
+
+当添加新的功能或组件时，应同步更新PROJECT_STRUCTURE.md：
+
+1. 在项目结构部分添加新的文件或目录说明
+2. 如果添加了新的测试文件，在测试部分添加相应的描述
+3. 在迁移计划的"阶段五：测试与调试"部分，确保包含了新测试的迁移信息
+
+### 迁移相关的测试文档
+
+确保`PROJECT_STRUCTURE.md`中的迁移计划反映最新的测试需求，特别是在"迁移测试代码"部分需要包含所有测试文件的迁移计划。
+
+## 测试运行方法
+
+运行单个测试文件：
+```bash
+npx vitest run tests/utils/MyUtil.test.ts
+```
+
+运行所有测试：
+```bash
+npx vitest run
+```
